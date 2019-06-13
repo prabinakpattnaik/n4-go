@@ -1,0 +1,48 @@
+#Introduction
+
+N4-GO is Go implementation of N4 interface between control plane and data plane in the 5GCore architecture. The protocol is defined in 3GPP TS 29.244 v15.5.0.
+N4 protocol has defined many Information Elements (IE) which will be included in protocol messages (i.e. Packet Forwarding Control Protocol (PFCP)) 
+
+#Done
+
+## Information Element
+RecoveryTimestamp (96)
+
+## PFCP Messages
+
+
+#TODO
+
+## Information Element
+All necesarry IE listed in ie.go file or needed in PFCP implementation by order.
+
+##PFCP Messages
+
+- Heartbeat-Request
+- Heartbeat-Response
+- Association-Setup-Request
+- Association-Setup-Response
+- Association-Update-Request
+- Association-Update-Response
+- Association-Release-Request
+- Association-Release-Response
+- Session-Establishment-Request
+- Session-Establishment-Response
+- Session-Modification-Request
+- Session-Modification-Response
+- Session-Deletion-Request
+- Session-Deleteyion-Respone
+- Session-Report-Request
+- Session-Report-Response
+- PFD-Management-Request
+- PFD-Management-Response
+- Version-Not-Supported
+- Node-Report-Request
+- Node-Report-Response
+
+
+
+
+
+
+
