@@ -213,7 +213,7 @@ func (i *InformationElement) SerializeTo(b []byte) error {
 //Len returns the length of Inforamtion Element
 func (i *InformationElement) Len() uint16 {
 	//TODO include entreprise ID
-	return 4 + uint16(i.Data.Len())
+	return uint16(i.Data.Len())
 }
 
 func (i *InformationElement) String() string {
