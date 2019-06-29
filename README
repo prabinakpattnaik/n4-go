@@ -8,6 +8,11 @@ N4 protocol has defined many Information Elements (IE) which will be included in
 ## Information Element
 RecoveryTimestamp (96)
 NodeID (IPv4)
+<<<<<<< HEAD
+=======
+UPFunctionFeatures
+
+>>>>>>> 12707464fde21b35076ffcbe324fca9888625b6f
 
 ## PFCP Messages
 

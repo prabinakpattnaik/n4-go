@@ -114,6 +114,16 @@ const (
 	IEPacketRate                      IEType = 94
 	IEOuterHeaderRemoval              IEType = 95
 	IERecoveryTimestamp               IEType = 96
+	IEDLFLowLevelMarking              IEType = 97
+	IEHeaderEnrichment                IEType = 98
+
+	IEMeasurementInformation  IEType = 100
+	IENodeReportType          IEType = 101
+	IERemoteGTPUPeer          IEType = 103
+	IEUESEQN                  IEType = 104
+	IEActivatePredefinedRules IEType = 106
+	IEDeactivePredeinedRules  IEType = 107
+	IEFARID                   IEType = 108
 )
 
 //Informatin Element is a Type, length,value group
