@@ -11,6 +11,7 @@ type IEType uint16
 
 const (
 	EnterpriseIDStart = 32768
+	BasicHeaderSize   = 4
 )
 
 const (
@@ -124,6 +125,8 @@ const (
 	IEActivatePredefinedRules IEType = 106
 	IEDeactivePredeinedRules  IEType = 107
 	IEFARID                   IEType = 108
+
+	IEUserPlaneIPResourceInformation IEType = 116
 )
 
 //Informatin Element is a Type, length,value group
@@ -182,7 +185,7 @@ func (i *InformationElement) Serialize() ([]byte, error) {
 		return nil, errors.New("Failed to serialize Information Element: Data is nil")
 	}
 
-	b := make([]byte, i.Len())
+	b := make([]byte, BasicHeaderSize+i.Len())
 	err := i.SerializeTo(b)
 	if err != nil {
 		return nil, err
@@ -213,7 +216,7 @@ func (i *InformationElement) SerializeTo(b []byte) error {
 //Len returns the length of Inforamtion Element
 func (i *InformationElement) Len() uint16 {
 	//TODO include entreprise ID
-	return 4 + uint16(i.Data.Len())
+	return uint16(i.Data.Len())
 }
 
 func (i *InformationElement) String() string {
