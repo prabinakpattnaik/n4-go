@@ -11,6 +11,10 @@ NodeID (IPv4)
 <<<<<<< HEAD
 =======
 UPFunctionFeatures
+CPFunctionFeatures
+UserPlaneIPResourceInformation
+Cause
+F-SEID
 
 >>>>>>> 12707464fde21b35076ffcbe324fca9888625b6f
 
