@@ -27,7 +27,7 @@ func TestNewApplyActionIE(t *testing.T) {
 	ba := []byte{0x00, 0x2C, 0x00, 0x01, 0x02}
 
 	if !bytes.Equal(bb, ba) {
-		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
+		t.Fatalf("unexpected value. want [%x], have [%x]", ba, bb)
 	}
 
 	t.Log(i)
