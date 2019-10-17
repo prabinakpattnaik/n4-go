@@ -39,7 +39,7 @@ const (
 	IECause                           IEType = 19
 	IESourceInterface                 IEType = 20
 	IEFTEID                           IEType = 21
-	IENetworkInstannce                IEType = 22
+	IENetworkInstance                 IEType = 22
 	IESDFFilter                       IEType = 23
 	IEApplicationID                   IEType = 24
 	IEGateStatus                      IEType = 25
