@@ -44,9 +44,7 @@ func TestIECreateFAR(t *testing.T) {
 	)
 
 	if cf.Length != uint16(len(b1)) {
-
 		t.Fatalf("Unexpected length. want %d, have %d", len(b1), cf.Length)
-
 	}
 
 	ba := []byte{0x00, 0x3, 0x00, 0x0d,
@@ -61,9 +59,7 @@ func TestIECreateFAR(t *testing.T) {
 	}
 
 	if !bytes.Equal(bb, ba) {
-
 		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
-
 	}
 
 }

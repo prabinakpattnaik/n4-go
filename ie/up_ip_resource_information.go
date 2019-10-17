@@ -51,8 +51,8 @@ func NewUPIPResourceInformation(length uint8, input []byte) *UPIPResourceInforma
 	//Network instance and source interface details missing
 
 	return &UPIPResourceInformation{
-		V4:          bool(isV4),
-		V6:          bool(isV6),
+		V4:          isV4,
+		V6:          isV6,
 		TEIDRI:      teidRi,
 		ASSONI:      assoni,
 		ASSOSI:      assosi,
