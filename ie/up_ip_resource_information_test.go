@@ -11,7 +11,7 @@ func TestUPIPResourceFunction(t *testing.T) {
 
 	upIPResourceInformation := NewUPIPResourceInformation(6, data)
 	if !bytes.Equal(upIPResourceInformation.IPv4Address, ipaddress) {
-		t.Fatalf("unexpected value. want [%x}, have [%x]", ipaddress, upIPResourceInformation.IPv4Address)
+		t.Fatalf("unexpected value. want [%x], have [%x]", ipaddress, upIPResourceInformation.IPv4Address)
 
 	}
 
