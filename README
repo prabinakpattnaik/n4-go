@@ -1,34 +1,45 @@
-#Introduction
+# Introduction
 
 N4-GO is Go implementation of N4 interface between control plane and data plane in the 5GCore architecture. The protocol is defined in 3GPP TS 29.244 v15.5.0.
 N4 protocol has defined many Information Elements (IE) which will be included in protocol messages (i.e. Packet Forwarding Control Protocol (PFCP)) 
 
-#Done
+# Done
 
 ## Information Element
-RecoveryTimestamp (96)
-NodeID (IPv4)
-UPFunctionFeatures
-CPFunctionFeatures
-UserPlaneIPResourceInformation
-Cause
-F-SEID
+- RecoveryTimestamp (96)
+- NodeID (IPv4)
+- UPFunctionFeatures
+- CPFunctionFeatures
+- UserPlaneIPResourceInformation
+- Cause
+- F-SEID
+
 
 
 ## PFCP Messages
-
-
-#TODO
-
-## Information Element
-All necesarry IE listed in ie.go file or needed in PFCP implementation by order.
-
-##PFCP Messages
+PFCP message header is created and tested.
 
 - Heartbeat-Request
 - Heartbeat-Response
 - Association-Setup-Request
 - Association-Setup-Response
+
+## Call Flow
+SMF entity bahaves as client entity and UPF behaves as server. The client should make an association setup request and get association setup response(see section 6.2.6.2). In the association setup response, UP can provide IP resources. Then, client sends session estblishment request and gets a response.
+
+NodeID of PFCP endpoint is IP address. 
+
+By default, TEID allocation/release is mandatory for the control plane. Therefore, FTUP bit in UP Function Features should not be set.
+In this case, TEID allocation/release is not managed by the data plane.
+
+
+# TODO
+
+## Information Element
+All necesarry IEs listed in ie.go file and needed to be implemented by order.
+
+## PFCP Messages
+
 - Association-Update-Request
 - Association-Update-Response
 - Association-Release-Request
@@ -47,9 +58,16 @@ All necesarry IE listed in ie.go file or needed in PFCP implementation by order.
 - Node-Report-Request
 - Node-Report-Response
 
+- Length of PFCP messages are not calculated by Len(). In stead, it returns sum of length value and header size. Better, it should be calculated itself.    
 
+## Missing Features
 
+N4 supports many features. Initial PoC considers only PFCP association setup and session establishment.The following features are considered for later release. 
 
+- support of load/overload control
+- Ethernet PDU session
+- handling of ARP and IPv6 Neighbour Solicitation Response
+-  
 
 
 

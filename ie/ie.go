@@ -11,7 +11,7 @@ type IEType uint16
 
 const (
 	EnterpriseIDStart = 32768
-	BasicHeaderSize   = 4
+	IEBasicHeaderSize = 4
 )
 
 const (
@@ -185,7 +185,7 @@ func (i *InformationElement) Serialize() ([]byte, error) {
 		return nil, errors.New("Failed to serialize Information Element: Data is nil")
 	}
 
-	b := make([]byte, BasicHeaderSize+i.Len())
+	b := make([]byte, IEBasicHeaderSize+i.Len())
 	err := i.SerializeTo(b)
 	if err != nil {
 		return nil, err
