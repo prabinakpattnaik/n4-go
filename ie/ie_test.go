@@ -8,11 +8,6 @@ import (
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
-var testIE = [][]byte{
-	//recovery-timestamp
-	{},
-}
-
 func TestNewInformationElement(t *testing.T) {
 
 	i := NewInformationElement(
@@ -125,4 +120,5 @@ func TestIEUserPlaneIPResourceInformation(t *testing.T) {
 	if b, _ := i.Serialize(); !bytes.Equal(b, ba) {
 		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, b)
 	}
+
 }
