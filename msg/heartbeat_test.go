@@ -21,7 +21,7 @@ func TestHeartbeatRequest(t *testing.T) {
 		n,
 	)
 
-	heartbeat := NewHeartbeat(pfcpHeader, i)
+	heartbeat := NewHeartbeat(pfcpHeader, &i)
 	if bb, _ := heartbeat.Serialize(); !bytes.Equal(bb, ba) {
 		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
 	}
@@ -41,7 +41,7 @@ func TestHeartbeatResponse(t *testing.T) {
 		n,
 	)
 
-	heartbeat := NewHeartbeat(pfcpHeader, i)
+	heartbeat := NewHeartbeat(pfcpHeader, &i)
 	if bb, _ := heartbeat.Serialize(); !bytes.Equal(bb, ba) {
 		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
 	}

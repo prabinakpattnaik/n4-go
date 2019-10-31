@@ -1,9 +1,21 @@
 package msg
 
 import (
+	"fmt"
+	"net"
+	"time"
+
 	"bitbucket.org/sothy5/n4-go/ie"
+
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
+var (
+	dataPlaneNodeID = []byte{0x0, 0xC0, 0xa8, 0x1, 0x20}
+	ipv4address     = net.IPv4(8, 8, 8, 8)
+)
+
+//PFCPAssociationSetupRequest
 type PFCPAssociationSetupRequest struct {
 	Header                         *PFCPHeader
 	NodeID                         *ie.InformationElement
@@ -13,12 +25,13 @@ type PFCPAssociationSetupRequest struct {
 	UserPlaneIPResourceInformation *ie.InformationElement
 }
 
-func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c, ui *ie.InformationElement) *PFCPAssociationSetupRequest {
+//NewPFCPAssociationSetupRequest creates new PFCPAssociationSetupRequst
+func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c, ui *ie.InformationElement) PFCPAssociationSetupRequest {
+	//if n == nil || r == nil {
+	//	return nil
+	//}
+	return PFCPAssociationSetupRequest{
 
-	if n == nil || r == nil {
-		return nil
-	}
-	return &PFCPAssociationSetupRequest{
 		Header:                         h,
 		NodeID:                         n,
 		RecoveryTimeStamp:              r,
@@ -29,10 +42,119 @@ func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c, ui *ie.Informatio
 
 }
 
-func (ar PFCPAssociationSetupRequest) Serialize() []byte {
+func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
+	var n, r, u, c, ui, cause ie.InformationElement
+	for _, informationElement := range m.IEs {
+		switch informationElement.Type {
+		case ie.IENodeID:
+			n = informationElement
+		case ie.IERecoveryTimestamp:
+			r = informationElement
+		case ie.IEUPFunctionFeatures:
+			u = informationElement
+		case ie.IECPFunctionFeatures:
+			c = informationElement
+		case ie.IEUserPlaneIPResourceInformation:
+			ui = informationElement
+		case ie.IECause:
+			cause = informationElement
+
+		default:
+			return nil, fmt.Errorf("No matching needed Information Element")
+		}
+
+	}
+
+	switch m.Header.MessageType {
+	case AssociationSetupRequestType:
+		pfcpAssociationSetupRequest := NewPFCPAssociationSetupRequest(m.Header, &n, &r, &u, &c, &ui)
+		return pfcpAssociationSetupRequest, nil
+	case AssociationSetupResponseType:
+		pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(m.Header, &n, &cause, &r, &u, &c, &ui)
+		return pfcpAssociationSetupResponse, nil
+	default:
+		return nil, fmt.Errorf("No matching PFCP Message Type")
+	}
+
+}
+
+//ProcessAssociationSetupRequest process the PFCPMessage into PFCPAssociationSetupRequest, record the relvant details and create the right ProcessAssociationSetupResponse.
+func ProcessAssociationSetupRequest(m *PFCPMessage) ([]byte, error) {
+	pfcpAssociationSetupRequest, err := FromPFCPMessage(m)
+	if err != nil {
+		return nil, err
+	}
+	// How to check all details are right.
+	// record nodeID, timestamp
+	// overlooked CPFunction Features.
+	// PFCPAssociationSetupResponse Creation
+
+	var length uint16
+
+	n := ie.NewInformationElement(
+		ie.IENodeID,
+		0,
+		dt.OctetString(dataPlaneNodeID),
+	)
+	length = n.Len() + ie.IEBasicHeaderSize
+	c := ie.NewInformationElement(
+		ie.IECause,
+		0,
+		dt.OctetString([]byte{0x01}),
+	)
+	length = length + c.Len() + ie.IEBasicHeaderSize
+
+	r := ie.NewInformationElement(
+		ie.IERecoveryTimestamp,
+		0,
+		dt.Time(time.Now()),
+	)
+	length = length + r.Len() + ie.IEBasicHeaderSize
+
+	u := ie.NewUPFunctionFeatures(false, true, true, false, false, false, false, false, false, false, false, false, false, false, false)
+	b, err := u.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	upFunctionFeaturesIE := ie.NewInformationElement(
+		ie.IEUPFunctionFeatures,
+		0,
+		dt.OctetString(b),
+	)
+	length = length + upFunctionFeaturesIE.Len() + ie.IEBasicHeaderSize
+	upIPResourceInformation := ie.NewUPIPResourceInformation(true, false, 0, false, false, 0, ipv4address, nil, nil, 0)
+	b, err = upIPResourceInformation.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	ui := ie.NewInformationElement(
+		ie.IEUserPlaneIPResourceInformation,
+		0,
+		dt.OctetString(b),
+	)
+	length = length + ui.Len() + ie.IEBasicHeaderSize
+
+	length = length + PFCPBasicMessageSize
+
+	header := pfcpAssociationSetupRequest.GetHeader()
+	header.MessageType = AssociationSetupResponseType
+	header.MessageLength = length
+	pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(header, &n, &c, &r, &upFunctionFeaturesIE, nil, &ui)
+	b, err = pfcpAssociationSetupResponse.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+
+}
+
+func (ar PFCPAssociationSetupRequest) Serialize() ([]byte, error) {
+
 	var b []byte
 	if ar.NodeID == nil || ar.RecoveryTimeStamp == nil {
-		return b
+		return b, nil
 	}
 
 	output := make([]byte, ar.Len())
@@ -57,7 +179,6 @@ func (ar PFCPAssociationSetupRequest) Serialize() []byte {
 	if ar.CPFunctionFeatures != nil {
 		cb, _ := ar.CPFunctionFeatures.Serialize()
 		if upFunctionFeaturesEnd == 0 {
-
 			cpFunctionFeaturesEnd = recoveryTimestampEnd + ie.IEBasicHeaderSize + ar.CPFunctionFeatures.Len()
 			copy(output[recoveryTimestampEnd:cpFunctionFeaturesEnd], cb)
 		} else {
@@ -75,9 +196,17 @@ func (ar PFCPAssociationSetupRequest) Serialize() []byte {
 		}
 	}
 
-	return output
+	return output, nil
 }
 
 func (ar PFCPAssociationSetupRequest) Len() uint16 {
 	return uint16(PFCPBasicHeaderLength) + ar.Header.MessageLength
+}
+
+func (ar PFCPAssociationSetupRequest) Type() PFCPType {
+	return ar.Header.MessageType
+}
+
+func (ar PFCPAssociationSetupRequest) GetHeader() *PFCPHeader {
+	return ar.Header
 }
