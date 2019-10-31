@@ -4,7 +4,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+
 	"github.com/fiorix/go-diameter/diam/datatype"
+	"github.com/u-root/u-root/pkg/uio"
 )
 
 type IEType uint16
@@ -140,8 +142,8 @@ type InformationElement struct {
 
 //NewInformation element creates new IE
 
-func NewInformationElement(ietype IEType, enterpriseId uint16, data datatype.Type) *InformationElement {
-	i := &InformationElement{
+func NewInformationElement(ietype IEType, enterpriseId uint16, data datatype.Type) InformationElement {
+	i := InformationElement{
 		Type:         ietype,
 		EnterpriseID: enterpriseId,
 		Data:         data,
@@ -222,3 +224,44 @@ func (i *InformationElement) Len() uint16 {
 func (i *InformationElement) String() string {
 	return fmt.Sprintf("{Code:%d,Length:%d,EntrepriseID:%d,Data:%s}", i.Type, i.Length, i.EnterpriseID, i.Data)
 }
+
+type InformationElements []InformationElement
+
+// FromBytes reads data into ies and returns an error if the ies are not a
+// valid serialized representation of PFCP Information Elements
+func (ies *InformationElements) FromBytes(data []byte) error {
+	//TODO: 10 is not good value.
+	*ies = make(InformationElements, 0, 10)
+	if len(data) == 0 {
+		// no InformationElements
+		return nil
+	}
+	buf := uio.NewBigEndianBuffer(data)
+	var ie InformationElement
+	for buf.Has(4) {
+		ietype := IEType(buf.Read16())
+		length := buf.Read16()
+		data, err := buf.ReadN(int(length))
+		if err != nil {
+			return err
+		}
+
+		switch ietype {
+		case IERecoveryTimestamp:
+			v, err := datatype.DecodeTime(data)
+			if err != nil {
+				return err
+			}
+			ie = NewInformationElement(ietype, 0, v)
+		default:
+			// TODO: parse the data into specific type.
+			ie = NewInformationElement(ietype, 0, datatype.OctetString(data))
+		}
+
+		*ies = append(*ies, ie)
+	}
+	return buf.FinError()
+
+}
+
+//

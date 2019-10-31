@@ -1,8 +1,9 @@
 package msg
 
 import (
-	"bitbucket.org/sothy5/n4-go/ie"
 	"errors"
+
+	"bitbucket.org/sothy5/n4-go/ie"
 )
 
 type PFCPAssociationSetupResponse struct {
@@ -15,12 +16,12 @@ type PFCPAssociationSetupResponse struct {
 	UserPlaneIPResourceInformation *ie.InformationElement
 }
 
-func NewPFCPAssociationSetupResponse(h *PFCPHeader, n, cause, r, u, c, ui *ie.InformationElement) *PFCPAssociationSetupResponse {
+func NewPFCPAssociationSetupResponse(h *PFCPHeader, n, cause, r, u, c, ui *ie.InformationElement) PFCP {
 
-	if n == nil || r == nil {
-		return nil
-	}
-	return &PFCPAssociationSetupResponse{
+	//if n == nil || r == nil {
+	//	return nil
+	//}
+	return PFCPAssociationSetupResponse{
 		Header:                         h,
 		NodeID:                         n,
 		Cause:                          cause,
@@ -107,4 +108,11 @@ func (res PFCPAssociationSetupResponse) Serialize() ([]byte, error) {
 func (res PFCPAssociationSetupResponse) Len() uint16 {
 	return uint16(PFCPBasicHeaderLength) + res.Header.MessageLength
 
+}
+
+func (res PFCPAssociationSetupResponse) Type() PFCPType {
+	return res.Header.MessageType
+}
+func (ar PFCPAssociationSetupResponse) GetHeader() *PFCPHeader {
+	return ar.Header
 }

@@ -14,10 +14,26 @@ type UPIPResourceInformation struct {
 	IPv4Address     net.IP
 	IPv6Address     net.IP
 	NetworkInstance []byte
-	SourceInterface []byte
+	SourceInterface uint8
 }
 
-func NewUPIPResourceInformation(length uint8, input []byte) *UPIPResourceInformation {
+func NewUPIPResourceInformation(v4, v6 bool, teidri uint8, assoni, assosi bool, teidrange uint8, ipv4address, ipv6address net.IP, networkinstance []byte, sourceinterface uint8) *UPIPResourceInformation {
+	return &UPIPResourceInformation{
+		V4:              v4,
+		V6:              v6,
+		TEIDRI:          teidri,
+		ASSONI:          assoni,
+		ASSOSI:          assosi,
+		TEIDRange:       teidrange,
+		IPv4Address:     ipv4address,
+		IPv6Address:     ipv6address,
+		NetworkInstance: networkinstance,
+		SourceInterface: sourceinterface,
+	}
+
+}
+
+func NewUPIPResourceInformationFromByte(length uint8, input []byte) *UPIPResourceInformation {
 	if length == 0 {
 		return nil
 	}
@@ -59,5 +75,43 @@ func NewUPIPResourceInformation(length uint8, input []byte) *UPIPResourceInforma
 		IPv4Address: ip4address,
 		IPv6Address: ip6address,
 	}
+
+}
+func (u UPIPResourceInformation) Serialize() ([]byte, error) {
+	var firstByte uint8
+	if u.V4 {
+		firstByte = 1
+	}
+	if u.V6 {
+		firstByte |= 2
+	}
+	//TODO three bit is maximum size
+	firstByte |= (u.TEIDRI << 2)
+	if u.ASSONI {
+		firstByte |= 32
+	}
+	if u.ASSOSI {
+		firstByte |= 64
+	}
+
+	b := make([]byte, 2)
+	b[0] = firstByte
+	b[1] = u.TEIDRange
+
+	if u.V4 {
+		b = append(b, u.IPv4Address...)
+	}
+	if u.V6 {
+		b = append(b, u.IPv6Address...)
+	}
+
+	if u.ASSONI {
+		b = append(b, u.NetworkInstance...)
+	}
+	if u.ASSOSI {
+		b = append(b, u.SourceInterface)
+	}
+
+	return b, nil
 
 }
