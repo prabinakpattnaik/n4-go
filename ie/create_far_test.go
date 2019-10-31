@@ -2,8 +2,9 @@ package ie
 
 import (
 	"bytes"
-	dt "github.com/fiorix/go-diameter/diam/datatype"
 	"testing"
+
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
 func TestIECreateFAR(t *testing.T) {
@@ -53,6 +54,40 @@ func TestIECreateFAR(t *testing.T) {
 	}
 
 	bb, err := cf.Serialize()
+	if err != nil {
+		t.Fatalf("Error in serializing %+v", err)
+
+	}
+
+	if !bytes.Equal(bb, ba) {
+		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
+	}
+
+}
+
+func TestCreateFARStruct(t *testing.T) {
+	farID := dt.Unsigned32(100)
+
+	f := NewInformationElement(
+		IEFARID,
+		0,
+		farID,
+	)
+
+	applyAction := dt.OctetString([]byte{0x02})
+	a := NewInformationElement(
+		IEApplyAction,
+		0,
+		applyAction,
+	)
+
+	createFAR := NewCreateFAR(&f, &a, nil, nil, nil)
+
+	ba := []byte{0x00, 0x6C, 0x00, 0x4, 0x00, 0x00, 0x00, 0x64,
+		0x00, 0x2C, 0x00, 0x01, 0x02,
+	}
+
+	bb, err := createFAR.Serialize()
 	if err != nil {
 		t.Fatalf("Error in serializing %+v", err)
 
