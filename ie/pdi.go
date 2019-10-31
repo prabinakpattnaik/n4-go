@@ -20,7 +20,7 @@ type PDI struct {
 	FramedIPv6Route               *InformationElement
 }
 
-func NEWPDI(sourceInterface, localFTEID, networkInstance, ueIPAddress, trafficEndpointID, sdffilter, applicaitonID, ethernetPDUSessionInformation, ethernetPacketFilter, qfi, framedRoute, frameRouting, frameIPv6Route *InformationElement) *PDI {
+func NewPDI(sourceInterface, localFTEID, networkInstance, ueIPAddress, trafficEndpointID, sdffilter, applicaitonID, ethernetPDUSessionInformation, ethernetPacketFilter, qfi, framedRoute, frameRouting, frameIPv6Route *InformationElement) *PDI {
 	return &PDI{
 		SourceInterface:               sourceInterface,
 		LocalFTEID:                    localFTEID,
