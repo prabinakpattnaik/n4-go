@@ -13,6 +13,7 @@ import (
 var (
 	PFCPBasicHeaderLength = 4
 	PFCPBasicMessageSize  = uint16(4)
+	PFCPMessageSize       = uint16(12)
 )
 
 type PFCPType uint8

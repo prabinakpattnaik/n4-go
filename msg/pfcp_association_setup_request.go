@@ -27,7 +27,7 @@ type PFCPAssociationSetupRequest struct {
 
 //NewPFCPAssociationSetupRequest creates new PFCPAssociationSetupRequst
 func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c, ui *ie.InformationElement) PFCPAssociationSetupRequest {
-	//if n == nil || r == nil {
+	//if n.Type == ie.IEReserved || r.Type == ie.IEReserved {
 	//	return nil
 	//}
 	return PFCPAssociationSetupRequest{
@@ -44,6 +44,7 @@ func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c, ui *ie.Informatio
 
 func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	var n, r, u, c, ui, cause ie.InformationElement
+	var cpfseid, createpdr, createfar, createurr, createqer, createbar ie.InformationElement
 	for _, informationElement := range m.IEs {
 		switch informationElement.Type {
 		case ie.IENodeID:
@@ -58,6 +59,18 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 			ui = informationElement
 		case ie.IECause:
 			cause = informationElement
+		case ie.IEFSEID:
+			cpfseid = informationElement
+		case ie.IECreatePDR:
+			createpdr = informationElement
+		case ie.IECreateFAR:
+			createfar = informationElement
+		case ie.IECreateURR:
+			createurr = informationElement
+		case ie.IECreateQER:
+			createqer = informationElement
+		case ie.IECreateBAR:
+			createbar = informationElement
 
 		default:
 			return nil, fmt.Errorf("No matching needed Information Element")
@@ -72,6 +85,9 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	case AssociationSetupResponseType:
 		pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(m.Header, &n, &cause, &r, &u, &c, &ui)
 		return pfcpAssociationSetupResponse, nil
+	case SessionEstablishmentRequestType:
+		pfcpSessionEstablishmentRequest := NewPFCPSessionEstablishmentRequest(m.Header, &cpfseid, &createpdr, &createfar, &createurr, &createqer, &createbar, nil, nil, nil, nil, nil, nil)
+		return pfcpSessionEstablishmentRequest, nil
 	default:
 		return nil, fmt.Errorf("No matching PFCP Message Type")
 	}
@@ -80,6 +96,7 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 
 //ProcessAssociationSetupRequest process the PFCPMessage into PFCPAssociationSetupRequest, record the relvant details and create the right ProcessAssociationSetupResponse.
 func ProcessAssociationSetupRequest(m *PFCPMessage) ([]byte, error) {
+	//TODO: casting
 	pfcpAssociationSetupRequest, err := FromPFCPMessage(m)
 	if err != nil {
 		return nil, err
