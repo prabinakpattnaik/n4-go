@@ -2,8 +2,9 @@ package ie
 
 import (
 	"bytes"
-	dt "github.com/fiorix/go-diameter/diam/datatype"
 	"testing"
+
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
 func TestNewPDI(t *testing.T) {
@@ -81,4 +82,45 @@ func TestNewPDI(t *testing.T) {
 	}
 
 	t.Log(i)
+}
+
+func TestNewPDIStruct(t *testing.T) {
+	sourceinterface := uint8(1)
+
+	si := NewInformationElement(
+		IESourceInterface,
+		0,
+		dt.OctetString([]byte{sourceinterface}),
+	)
+
+	ft := []byte{0x01, 0x00, 0x00, 0xFF, 0xFF, 0xC0, 0xA8, 0x1, 0x65}
+	fteid := NewInformationElement(
+		IEFTEID,
+		0,
+		dt.OctetString(ft),
+	)
+
+	ni := dt.OctetString("internet.mnc012.mcc345.gprs")
+
+	networkInstance := NewInformationElement(
+		IENetworkInstance,
+		0,
+		ni,
+	)
+
+	ba := []byte{0x00, 0x14, 0x00, 0x01, 0x01,
+		0x00, 0x15, 0x00, 0x09, 0x01, 0x00, 0x00, 0xFF, 0xFF, 0xC0, 0xA8, 0x1, 0x65,
+		0x00, 0x16, 0x00, 0x1b, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x2e, 0x6d, 0x6e, 0x63, 0x30, 0x31, 0x32, 0x2e, 0x6d, 0x63, 0x63, 0x33, 0x34, 0x35, 0x2e, 0x67, 0x70, 0x72, 0x73}
+
+	pdi := NewPDI(&si, &fteid, &networkInstance, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	bb, err := pdi.Serialize()
+	if err != nil {
+		t.Fatalf("Error in serializing %+v", err)
+
+	}
+
+	if !bytes.Equal(bb, ba) {
+
+		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
+	}
 }
