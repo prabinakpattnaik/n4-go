@@ -33,7 +33,7 @@ func NewUPIPResourceInformation(v4, v6 bool, teidri uint8, assoni, assosi bool, 
 
 }
 
-func NewUPIPResourceInformationFromByte(length uint8, input []byte) *UPIPResourceInformation {
+func NewUPIPResourceInformationFromByte(length uint16, input []byte) *UPIPResourceInformation {
 	if length == 0 {
 		return nil
 	}
@@ -99,8 +99,9 @@ func (u UPIPResourceInformation) Serialize() ([]byte, error) {
 	b[1] = u.TEIDRange
 
 	if u.V4 {
-		b = append(b, u.IPv4Address...)
+		b = append(b, u.IPv4Address.To4()...)
 	}
+
 	if u.V6 {
 		b = append(b, u.IPv6Address...)
 	}
