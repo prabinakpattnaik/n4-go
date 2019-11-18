@@ -8,6 +8,8 @@ import (
 
 	"bitbucket.org/sothy5/n4-go/msg"
 
+	setting "bitbucket.org/sothy5/n4-go/client/internal/helper"
+	"bitbucket.org/sothy5/n4-go/client/internal/session"
 	"bitbucket.org/sothy5/n4-go/ie"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
@@ -16,11 +18,15 @@ var (
 	udpport           = 8805
 	maxBufferSize     = 1024
 	remoteIPv4address = net.IPv4(127, 0, 0, 1)
-	sequanceNumber    = uint32(200)
+	sequenceNumber    = uint32(100)
+	seid              = uint64(100)
 
-	controlPlaneNodeID      = []byte{0x0, 0xC0, 0xa8, 0x1, 0x21}
-	controlFunctionFeatures = []byte{0x00}
-	PFCPMinHeaderSize       = 8
+	controlPlaneNodeID         = []byte{0x0, 0xC0, 0xa8, 0x1, 0x20}
+	nodeIP                     = net.ParseIP("192.168.1.32")
+	controlFunctionFeatures    = []byte{0x00}
+	PFCPMinHeaderSize          = 8
+	UPIPResourceInformationMap map[int]*ie.UPIPResourceInformation
+	teid                       uint32 = 0
 )
 
 // Client implements a PFCP client
@@ -119,7 +125,7 @@ func main() {
 	length = length + c.Len() + ie.IEBasicHeaderSize
 
 	length = length + msg.PFCPBasicMessageSize
-	pfcpHeader := msg.NewPFCPHeader(1, false, false, msg.AssociationSetupRequestType, length, 0, sequanceNumber, 0)
+	pfcpHeader := msg.NewPFCPHeader(1, false, false, msg.AssociationSetupRequestType, length, 0, sequenceNumber, 0)
 
 	ar := msg.NewPFCPAssociationSetupRequest(pfcpHeader, &n, &r, nil, &c, nil)
 	b, _ := ar.Serialize()
@@ -135,12 +141,39 @@ func main() {
 			fmt.Printf("error in MessageFromBytes() %+v\n", err)
 		}
 
-		pfcpAssociationSetupResponse, err := msg.FromPFCPMessage(pfcpMessage)
+		pfcp, err := msg.FromPFCPMessage(pfcpMessage)
 		if err != nil {
 			fmt.Printf("error in FromPFCPMessage() %+v\n", err)
 		}
+		pfcpAssociationSetupResponse, ok := pfcp.(msg.PFCPAssociationSetupResponse)
+		if !ok {
+			fmt.Printf("wrong in  type assertation")
+		}
+		fmt.Printf("received message for UserPlaneIPResourceInformation %+v\n", pfcpAssociationSetupResponse.UserPlaneIPResourceInformation)
+		b, err := pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Serialize()
+		if err != nil {
+			fmt.Printf("error in pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Serialize() %+v\n", err)
+		}
+		UPIPResourceInformation := ie.NewUPIPResourceInformationFromByte(pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Length, b[4:])
+		fmt.Printf("received UPIPResourceInformation %+v\n", UPIPResourceInformation)
 
-		fmt.Printf("received message %+v\n", pfcpAssociationSetupResponse)
+		//setting := make(map[int]*ie.UPIPResourceInformation)
+		//setting[1] = UPIPResourceInformation
+
+		fteid, err := setting.Assign_tunnelID(UPIPResourceInformation.IPv4Address, teid)
+		b, err = session.CreateNewSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1)
+		if err != nil {
+			fmt.Printf("error in pfcpSessionEstablishmentRequest %+v\n", err)
+		}
+
+		client.Write(b)
+		rb, err = client.Read()
+		if err != nil {
+			log.Print(err)
+		}
+		fmt.Printf("received pfcpSessionEstablishmentResponse %+v\n", UPIPResourceInformation)
+		//TODO: Keep NodeID, UPFunctionFeatures, and UPIPResourceInformation
+
 	}
 
 }
