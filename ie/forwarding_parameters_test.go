@@ -2,8 +2,9 @@ package ie
 
 import (
 	"bytes"
-	dt "github.com/fiorix/go-diameter/diam/datatype"
 	"testing"
+
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
 func TestIEForwardingParameters(t *testing.T) {
@@ -38,6 +39,31 @@ func TestIEForwardingParameters(t *testing.T) {
 
 	ba := []byte{0x00, 0x04, 0x00, 0x5, 0x00, 0x2a, 0x00, 0x01, 0x01}
 
+	bb, err := fp.Serialize()
+	if err != nil {
+		t.Fatalf("Error in serializing %+v", err)
+
+	}
+
+	if !bytes.Equal(bb, ba) {
+
+		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
+
+	}
+
+}
+
+func TestForwardingParameters(t *testing.T) {
+	destinationinterface := uint8(1)
+
+	d := NewInformationElement(
+		IEDestinationInterface,
+		0,
+		dt.OctetString([]byte{destinationinterface}),
+	)
+
+	fp := NewForwardingParameters(&d, nil, nil, nil, nil, nil, nil, nil, nil)
+	ba := []byte{0x00, 0x2a, 0x00, 0x01, 0x01}
 	bb, err := fp.Serialize()
 	if err != nil {
 		t.Fatalf("Error in serializing %+v", err)
