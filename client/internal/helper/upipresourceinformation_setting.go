@@ -1,4 +1,4 @@
-package setting
+package helper
 
 import (
 	"bitbucket.org/sothy5/n4-go/ie"

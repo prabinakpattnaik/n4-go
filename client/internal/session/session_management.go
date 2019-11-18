@@ -23,6 +23,11 @@ func ProcessPFCPSessionEstablishmentResponse(m *msg.PFCPMessage) ([]byte, error)
 func CreateNewSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint16, farid uint32, sourceinterface uint8, fteid *ie.FTEID, aa, destionationinterface uint8) ([]byte, error) {
 	//TODO nodeIP is IPv4 address.
 	// Need to change when accomadating FQDN
+	// SN in cremental
+	//SEI in increment for each session.
+	//f-seid is incremental against each SEI.
+	// Error: Session context not found
+
 	nodeID := []byte{0x00}
 	nodeID = append(nodeID, nodeIP.To4()...)
 	nodeIDIE := ie.NewInformationElement(
