@@ -1,6 +1,6 @@
 # Introduction
 
-N4-GO is Go implementation of N4 interface between control plane and data plane in the 5GCore architecture. The protocol is defined in 3GPP TS 29.244 v15.5.0.
+N4-GO is Go implementation of N4 interface, used between control plane and data plane in the 5GCore architecture. The protocol is defined in 3GPP TS 29.244 v15.5.0.
 N4 protocol has defined many Information Elements (IE) which will be included in protocol messages (i.e. Packet Forwarding Control Protocol (PFCP)) 
 
 # Done
@@ -16,6 +16,7 @@ N4 protocol has defined many Information Elements (IE) which will be included in
 - F-SEID
 
 
+
 ## PFCP Messages
 PFCP message header is created and tested.
 
@@ -23,11 +24,12 @@ PFCP message header is created and tested.
 - Heartbeat-Response
 - Association-Setup-Request
 - Association-Setup-Response
+- Session-Establishment-Request
+- Session-Establishment-Response
 
 ## Call Flow
 SMF entity bahaves as client entity and UPF behaves as server. The client should make an association setup request and get association setup response(see section 6.2.6.2). In the association setup response, UP can provide IP resources. Then, client sends session estblishment request and gets a response.
 
-NodeID of PFCP endpoint is IP address. 
 
 By default, TEID allocation/release is mandatory for the control plane. Therefore, FTUP bit in UP Function Features should not be set.
 In this case, TEID allocation/release is not managed by the data plane.
@@ -44,8 +46,6 @@ All necesarry IEs listed in ie.go file and needed to be implemented by order.
 - Association-Update-Response
 - Association-Release-Request
 - Association-Release-Response
-- Session-Establishment-Request
-- Session-Establishment-Response
 - Session-Modification-Request
 - Session-Modification-Response
 - Session-Deletion-Request
@@ -67,7 +67,34 @@ N4 supports many features. Initial PoC considers only PFCP association setup and
 - support of load/overload control
 - Ethernet PDU session
 - handling of ARP and IPv6 Neighbour Solicitation Response
--  
+
+
+# Test
+N4-GO library can be tested as follows:
+Compile server.go and client .go files in corresponding folder. 
+
+```
+go build server.go
+```
+
+```
+go build client.go
+```
+
+Run the code
+
+```
+sudo ./server
+``` 
+
+```
+sudo ./client
+```
+
+When running client, you will see validation of sequence number of session establishment  request and response. 
+
+
+
 
 
 
