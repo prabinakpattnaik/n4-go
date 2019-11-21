@@ -101,14 +101,11 @@ func ProcessPFCPSessionEstablishmentRequest(m *PFCPMessage, nodeIP net.IP, seid 
 	nodeID := []byte{0x00}
 	nodeID = append(nodeID, nodeIP.To4()...)
 
-	fmt.Printf("nodeID value [%x]\n", nodeID)
-
 	n := ie.NewInformationElement(
 		ie.IENodeID,
 		0,
 		dt.OctetString(nodeID),
 	)
-
 	length := ie.IEBasicHeaderSize + n.Len()
 
 	c := ie.NewInformationElement(
@@ -130,29 +127,11 @@ func ProcessPFCPSessionEstablishmentRequest(m *PFCPMessage, nodeIP net.IP, seid 
 	)
 	length = length + ie.IEBasicHeaderSize + upfseid.Len()
 
-	fmt.Println("CreatePDR %+v\n", pfcpSessionEstablishmentRequest.CreatePDR)
-
 	cPDR, err := ie.CreatePDRIEsFromBytes(pfcpSessionEstablishmentRequest.CreatePDR.Data.Serialize())
 	if err != nil {
 		return nil, err
 	}
-	/*
-		ruleID := []byte{0x00, 0x10}
-		pdrid := ie.NewInformationElement(
-			ie.IEPDRID,
-			0,
-			dt.OctetString(ruleID),
-		)
 
-		createdPDR := ie.NewCreatedPDR(&pdrid, nil)
-		b, err := createdPDR.Serialize()
-		if err != nil {
-			return nil, err
-
-		}
-	*/
-	fmt.Printf("%+v\n", cPDR)
-	fmt.Printf("%+v\n", cPDR.PDRID)
 	b, err := cPDR.PDRID.Serialize()
 	if err != nil {
 		return nil, err
