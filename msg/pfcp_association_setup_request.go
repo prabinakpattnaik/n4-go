@@ -45,6 +45,7 @@ func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c, ui *ie.Informatio
 func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	var n, r, u, c, ui, cause ie.InformationElement
 	var cpfseid, createpdr, createfar, createurr, createqer, createbar ie.InformationElement
+	var offending, createdpdr ie.InformationElement
 	for _, informationElement := range m.IEs {
 		switch informationElement.Type {
 		case ie.IENodeID:
@@ -71,6 +72,10 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 			createqer = informationElement
 		case ie.IECreateBAR:
 			createbar = informationElement
+		case ie.IEOffendingIE:
+			offending = informationElement
+		case ie.IECreatedPDR:
+			createdpdr = informationElement
 
 		default:
 			return nil, fmt.Errorf("No matching needed Information Element")
@@ -88,6 +93,9 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	case SessionEstablishmentRequestType:
 		pfcpSessionEstablishmentRequest := NewPFCPSessionEstablishmentRequest(m.Header, &n, &cpfseid, &createpdr, &createfar, &createurr, &createqer, &createbar, nil, nil, nil, nil, nil)
 		return pfcpSessionEstablishmentRequest, nil
+	case SessionEstablishmentResponseType:
+		pfcpSessionEstablishmentResponse := NewPFCPSessionEstablishmentResponse(m.Header, &n, &cause, &offending, &cpfseid, &createdpdr, nil, nil, nil, nil)
+		return pfcpSessionEstablishmentResponse, nil
 	default:
 		return nil, fmt.Errorf("No matching PFCP Message Type")
 	}
