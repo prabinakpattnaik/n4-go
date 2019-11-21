@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"bitbucket.org/sothy5/n4-go/client/internal/session"
 	"bitbucket.org/sothy5/n4-go/ie"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -44,13 +44,13 @@ func NewClient() *Client {
 	dst, err := net.ResolveUDPAddr("udp", raddr)
 
 	if err != nil {
-		log.Printf(" resolveUDP Addr err %+v\n", err)
+		log.WithError(err).Error("resolveUDP Addr err ")
 	}
 
 	conn, err := net.DialUDP("udp4", nil, dst)
 	if err != nil {
 		//TODO handle this error
-		log.Printf("failure in connection setup %+v\n", err)
+		log.WithError(err).Error("failure in connection setup")
 		return nil
 	}
 	return &Client{
@@ -74,12 +74,12 @@ func (c *Client) Read() ([]byte, error) {
 
 func (c *Client) Write(b []byte) error {
 	if c.Conn == nil {
-		fmt.Println("Nil conn pointer")
+		log.Fatal("Nil Conn pointer")
 	}
 	_, err := c.Conn.Write(b)
 	if err != nil {
-		log.Printf("failure in writing over connection: %+v\n", err)
-		return err
+		log.WithError(err).Fatal("Not possible to write over Conn")
+
 	}
 	return nil
 
@@ -95,30 +95,27 @@ func RecvProcess(c *Client) {
 	for {
 		rb, err := c.Read()
 		if err != nil {
-			log.Print(err)
+			log.WithError(err).Fatal("connection reading error")
 		}
-		fmt.Printf("received pfcpSessionEstablishmentResponse [%x]\n", rb)
+		log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionEstablishmentResponse")
 		pfcpMessage, err := msg.MessageFromBytes(rb)
 		if err != nil {
-			log.Print(err)
+			log.WithError(err).Info("Error in received pfcpSessionEstablishmentResponse")
 		}
 		pfcp, err := msg.FromPFCPMessage(pfcpMessage)
 		if err != nil {
-			fmt.Printf("error in FromPFCPMessage() %+v\n", err)
+			log.WithError(err).Info("error in FromPFCPMessage")
 		}
+
 		pfcpSessionEstablishmentResponse, ok := pfcp.(msg.PFCPSessionEstablishmentResponse)
 		if ok {
-			fmt.Printf("received pfcpSessionEstablishmentResponse %+v\n", pfcpSessionEstablishmentResponse)
-			fmt.Printf("received pfcpSessionEstablishmentResponse Header%+v\n", pfcpSessionEstablishmentResponse.Header)
 
 			sessionRequestResponse := session.SessionRequestResponse{
 				SResponse: &pfcpSessionEstablishmentResponse,
 			}
 
 			sessionEntity.Inc(pfcpSessionEstablishmentResponse.Header.SequenceNumber, sessionRequestResponse)
-			fmt.Printf("sequence number is equal for request and response %d\n", pfcpSessionEstablishmentResponse.Header.SequenceNumber)
-		} else {
-			fmt.Printf("Error")
+
 		}
 
 	}
@@ -174,24 +171,36 @@ func main() {
 		pfcpMessage, err := msg.MessageFromBytes(rb)
 
 		if err != nil {
-			fmt.Printf("error in MessageFromBytes() %+v\n", err)
+			log.WithError(err).Fatal("error from MessageFromBytes")
+
 		}
 
 		pfcp, err := msg.FromPFCPMessage(pfcpMessage)
 		if err != nil {
-			fmt.Printf("error in FromPFCPMessage() %+v\n", err)
+			log.WithError(err).Fatal("error from FromPFCPMessage")
 		}
 		pfcpAssociationSetupResponse, ok := pfcp.(msg.PFCPAssociationSetupResponse)
 		if !ok {
-			fmt.Printf("wrong in  type assertation")
+			log.WithError(err).Fatal("wrong type asseration of PFCPAssociationSetupResponse")
 		}
-		fmt.Printf("received message for UserPlaneIPResourceInformation %+v\n", pfcpAssociationSetupResponse.UserPlaneIPResourceInformation)
+		log.WithFields(log.Fields{"UserPlaneIPResourceInformation": pfcpAssociationSetupResponse.UserPlaneIPResourceInformation}).Info("Received Information")
 		b, err := pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Serialize()
 		if err != nil {
-			fmt.Printf("error in pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Serialize() %+v\n", err)
+			log.WithError(err).Fatal("error in pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Serialize")
+
 		}
 		UPIPResourceInformation := ie.NewUPIPResourceInformationFromByte(pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Length, b[4:])
-		fmt.Printf("received UPIPResourceInformation %+v\n", UPIPResourceInformation)
+		log.WithFields(log.Fields{"V4": UPIPResourceInformation.V4,
+			"V6":              UPIPResourceInformation.V6,
+			"TEIDRI":          UPIPResourceInformation.TEIDRI,
+			"ASSONI":          UPIPResourceInformation.ASSONI,
+			"ASSOSI":          UPIPResourceInformation.ASSOSI,
+			"TEIDRange":       UPIPResourceInformation.TEIDRange,
+			"IPv4Address":     UPIPResourceInformation.IPv4Address,
+			"IPv6Address":     UPIPResourceInformation.IPv6Address,
+			"NetworkInstance": UPIPResourceInformation.NetworkInstance,
+			"SourceInterface": UPIPResourceInformation.SourceInterface,
+		}).Info("Received UserPlaneIPResourceInformation")
 
 		//setting := make(map[int]*ie.UPIPResourceInformation)
 		//setting[1] = UPIPResourceInformation
@@ -207,14 +216,14 @@ func main() {
 			fteid, err := setting.Assign_tunnelID(UPIPResourceInformation.IPv4Address, teid)
 			pfcpSessionEstablishmentRequest, err := session.CreateNewSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1)
 			if err != nil {
-				fmt.Printf("error in pfcpSessionEstablishmentRequest %+v\n", err)
+				log.WithError(err).Error("error in pfcpSessionEstablishmentRequest")
 				continue
 
 			}
 
 			b, err := pfcpSessionEstablishmentRequest.Serialize()
 			if err != nil {
-				fmt.Printf("error in pfcpSessionEstablishmentRequest %+v\n", err)
+				log.WithError(err).Error("error in pfcpSessionEstablishmentRequest serialization")
 				continue
 			}
 			sessionRequestResponse := session.SessionRequestResponse{
