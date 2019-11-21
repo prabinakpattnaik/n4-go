@@ -19,9 +19,13 @@ func TestSessionManagement(t *testing.T) {
 	fteid := ie.NewFTEID(true, false, false, false, 255, nodeIP, nil, 0)
 	aa := uint8(2)
 	destionationinterface := uint8(1)
-	b, err := CreateNewSession(sei, sn, nodeIP, seid, pdrid, farid, sourceinterface, fteid, aa, destionationinterface)
+	pfcpSessionEstablishmentRequest, err := CreateNewSession(sei, sn, nodeIP, seid, pdrid, farid, sourceinterface, fteid, aa, destionationinterface)
 	if err != nil {
 		t.Fatalf("Create New Session Error %+v\n", err)
+	}
+	b, err := pfcpSessionEstablishmentRequest.Serialize()
+	if err != nil {
+		t.Fatalf("New PFCP Session serialization Error %+v\n", err)
 	}
 
 	bb := []byte{0x21, 0x32, 0x00, 0x6c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x90, 0x00, 0x00, 0xc8, 0x00,

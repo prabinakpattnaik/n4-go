@@ -107,7 +107,7 @@ func CreatePDRIEsFromBytes(b []byte) (*CreatePDR, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("createPDRIEs %+v\n", createPDRIEs)
+
 	for _, informationElement := range createPDRIEs {
 		switch informationElement.Type {
 		case IEPDRID:

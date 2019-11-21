@@ -20,12 +20,12 @@ func ProcessPFCPSessionEstablishmentResponse(m *msg.PFCPMessage) ([]byte, error)
 	return nil, nil
 }
 
-func CreateNewSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint16, farid uint32, sourceinterface uint8, fteid *ie.FTEID, aa, destionationinterface uint8) ([]byte, error) {
+func CreateNewSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint16, farid uint32, sourceinterface uint8, fteid *ie.FTEID, aa, destionationinterface uint8) (*msg.PFCPSessionEstablishmentRequest, error) {
 	//TODO nodeIP is IPv4 address.
 	// Need to change when accomadating FQDN
-	// SN in cremental
-	//SEI in increment for each session.
-	//f-seid is incremental against each SEI.
+	// SN incremental (request and response has same value)
+	// SEID in increment for each session, set by sending entity. Each session, sending side uses SEID X and receiving SEID Y)
+	//
 	// Error: Session context not found
 
 	nodeID := []byte{0x00}
@@ -156,10 +156,6 @@ func CreateNewSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid u
 	pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionEstablishmentRequestType, length+12, sei, sn, 0)
 	pfcpSessionEstablishmentRequest := msg.NewPFCPSessionEstablishmentRequest(pfcpHeader, &nodeIDIE, &cpfseidIE, &createPDRIE, &createFARIE, nil, nil, nil, nil, nil, nil, nil, nil)
 
-	b, err := pfcpSessionEstablishmentRequest.Serialize()
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
+	return &pfcpSessionEstablishmentRequest, nil
 
 }

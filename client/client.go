@@ -27,6 +27,7 @@ var (
 	PFCPMinHeaderSize          = 8
 	UPIPResourceInformationMap map[int]*ie.UPIPResourceInformation
 	teid                       uint32 = 0
+	sessionEntity                     = session.SessionEntity{M: make(map[uint32]session.SessionRequestResponse)}
 )
 
 // Client implements a PFCP client
@@ -89,6 +90,41 @@ func (c *Client) Close() {
 	c.Conn.Close()
 
 }
+
+func RecvProcess(c *Client) {
+	for {
+		rb, err := c.Read()
+		if err != nil {
+			log.Print(err)
+		}
+		fmt.Printf("received pfcpSessionEstablishmentResponse [%x]\n", rb)
+		pfcpMessage, err := msg.MessageFromBytes(rb)
+		if err != nil {
+			log.Print(err)
+		}
+		pfcp, err := msg.FromPFCPMessage(pfcpMessage)
+		if err != nil {
+			fmt.Printf("error in FromPFCPMessage() %+v\n", err)
+		}
+		pfcpSessionEstablishmentResponse, ok := pfcp.(msg.PFCPSessionEstablishmentResponse)
+		if ok {
+			fmt.Printf("received pfcpSessionEstablishmentResponse %+v\n", pfcpSessionEstablishmentResponse)
+			fmt.Printf("received pfcpSessionEstablishmentResponse Header%+v\n", pfcpSessionEstablishmentResponse.Header)
+
+			sessionRequestResponse := session.SessionRequestResponse{
+				SResponse: &pfcpSessionEstablishmentResponse,
+			}
+
+			sessionEntity.Inc(pfcpSessionEstablishmentResponse.Header.SequenceNumber, sessionRequestResponse)
+			fmt.Printf("sequence number is equal for request and response %d\n", pfcpSessionEstablishmentResponse.Header.SequenceNumber)
+		} else {
+			fmt.Printf("Error")
+		}
+
+	}
+
+}
+
 func main() {
 
 	client := NewClient()
@@ -160,33 +196,35 @@ func main() {
 		//setting := make(map[int]*ie.UPIPResourceInformation)
 		//setting[1] = UPIPResourceInformation
 
-		fteid, err := setting.Assign_tunnelID(UPIPResourceInformation.IPv4Address, teid)
-		b, err = session.CreateNewSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1)
-		if err != nil {
-			fmt.Printf("error in pfcpSessionEstablishmentRequest %+v\n", err)
-		}
+		go RecvProcess(client)
 
-		client.Write(b)
-		rb, err = client.Read()
-		if err != nil {
-			log.Print(err)
-		}
-		fmt.Printf("received pfcpSessionEstablishmentResponse [%x]\n", rb)
-		pfcpMessage, err = msg.MessageFromBytes(rb)
-		if err != nil {
-			log.Print(err)
-		}
-		pfcp, err = msg.FromPFCPMessage(pfcpMessage)
-		if err != nil {
-			fmt.Printf("error in FromPFCPMessage() %+v\n", err)
-		}
-		pfcpSessionEstablishmentResponse, ok := pfcp.(msg.PFCPSessionEstablishmentResponse)
-		fmt.Printf("received pfcpSessionEstablishmentResponse %+v\n", pfcpSessionEstablishmentResponse)
-		fmt.Printf("received pfcpSessionEstablishmentResponse Header%+v\n", pfcpSessionEstablishmentResponse.Header)
+		for i := 0; i < 10; i++ {
+			teid++
+			sequenceNumber++
+			seid++
+			time.Sleep(2 * time.Second)
 
-		if sequenceNumber == pfcpSessionEstablishmentResponse.Header.SequenceNumber {
-			fmt.Printf("sequence number is equal for request and response %d\n", pfcpSessionEstablishmentResponse.Header.SequenceNumber)
+			fteid, err := setting.Assign_tunnelID(UPIPResourceInformation.IPv4Address, teid)
+			pfcpSessionEstablishmentRequest, err := session.CreateNewSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1)
+			if err != nil {
+				fmt.Printf("error in pfcpSessionEstablishmentRequest %+v\n", err)
+				continue
+
+			}
+
+			b, err := pfcpSessionEstablishmentRequest.Serialize()
+			if err != nil {
+				fmt.Printf("error in pfcpSessionEstablishmentRequest %+v\n", err)
+				continue
+			}
+			sessionRequestResponse := session.SessionRequestResponse{
+				SRequest: pfcpSessionEstablishmentRequest,
+			}
+			sessionEntity.Inc(sequenceNumber, sessionRequestResponse)
+			client.Write(b)
+
 		}
+		time.Sleep(2 * time.Second)
 
 		//TODO: Keep NodeID, UPFunctionFeatures, and UPIPResourceInformation
 
