@@ -2,8 +2,10 @@ package msg
 
 import (
 	"fmt"
+	"net"
 
 	"bitbucket.org/sothy5/n4-go/ie"
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
 //PFCPSessionEstablishmentRequest
@@ -69,6 +71,7 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 
 	createpdr, _ := sr.CreatePDR.Serialize()
 	createpdrEnd := seidEnd + ie.IEBasicHeaderSize + sr.CreatePDR.Len()
+
 	copy(output[seidEnd:createpdrEnd], createpdr)
 
 	createfar, _ := sr.CreateFAR.Serialize()
@@ -81,16 +84,89 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 
 }
 
-func ProcessPFCPSessionEstablishmentRequest(m *PFCPMessage) ([]byte, error) {
+func ProcessPFCPSessionEstablishmentRequest(m *PFCPMessage, nodeIP net.IP, seid uint64) ([]byte, error) {
 	pfcpMessage, err := FromPFCPMessage(m)
 	if err != nil {
+		fmt.Printf("pfcpSessionER:Header %+v\n", pfcpMessage)
 		return nil, err
 	}
 	pfcpSessionEstablishmentRequest, ok := pfcpMessage.(PFCPSessionEstablishmentRequest)
+
 	if !ok {
 		return nil, fmt.Errorf("PFCP Session Establishment Request could not type asserted")
 	}
-	b, err := pfcpSessionEstablishmentRequest.Serialize()
+
+	//TODO, add more business logic to check the details,CreatePDR, CreateFAR
+
+	nodeID := []byte{0x00}
+	nodeID = append(nodeID, nodeIP.To4()...)
+
+	fmt.Printf("nodeID value [%x]\n", nodeID)
+
+	n := ie.NewInformationElement(
+		ie.IENodeID,
+		0,
+		dt.OctetString(nodeID),
+	)
+
+	length := ie.IEBasicHeaderSize + n.Len()
+
+	c := ie.NewInformationElement(
+		ie.IECause,
+		0,
+		dt.OctetString([]byte{0x01}),
+	)
+	length = length + ie.IEBasicHeaderSize + c.Len()
+
+	fseid := ie.NewFSEID(true, false, seid, nodeIP, nil)
+	bb, err := fseid.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	upfseid := ie.NewInformationElement(
+		ie.IEFSEID,
+		0,
+		dt.OctetString(bb),
+	)
+	length = length + ie.IEBasicHeaderSize + upfseid.Len()
+
+	fmt.Println("CreatePDR %+v\n", pfcpSessionEstablishmentRequest.CreatePDR)
+
+	cPDR, err := ie.CreatePDRIEsFromBytes(pfcpSessionEstablishmentRequest.CreatePDR.Data.Serialize())
+	if err != nil {
+		return nil, err
+	}
+	/*
+		ruleID := []byte{0x00, 0x10}
+		pdrid := ie.NewInformationElement(
+			ie.IEPDRID,
+			0,
+			dt.OctetString(ruleID),
+		)
+
+		createdPDR := ie.NewCreatedPDR(&pdrid, nil)
+		b, err := createdPDR.Serialize()
+		if err != nil {
+			return nil, err
+
+		}
+	*/
+	fmt.Printf("%+v\n", cPDR)
+	fmt.Printf("%+v\n", cPDR.PDRID)
+	b, err := cPDR.PDRID.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	createdPDRIE := ie.NewInformationElement(
+		ie.IECreatedPDR,
+		0,
+		dt.OctetString(b),
+	)
+	length = length + ie.IEBasicHeaderSize + createdPDRIE.Len()
+
+	pfcpHeader := NewPFCPHeader(1, false, true, SessionEstablishmentResponseType, length+12, seid, pfcpSessionEstablishmentRequest.Header.SequenceNumber, 0)
+	pfcpSessionEstablishmentResponse := NewPFCPSessionEstablishmentResponse(pfcpHeader, &n, &c, nil, &upfseid, &createdPDRIE, nil, nil, nil, nil)
+	b, err = pfcpSessionEstablishmentResponse.Serialize()
 	if err != nil {
 		return nil, err
 	}

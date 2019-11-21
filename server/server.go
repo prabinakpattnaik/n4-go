@@ -13,6 +13,8 @@ import (
 var (
 	udpport   = 8805
 	ipaddress = "127.0.0.1"
+	seid      = uint64(10000)
+	nodeIP    = net.ParseIP("192.168.1.32")
 )
 
 // Handler is a type that defines the handler function to be called every time a
@@ -118,12 +120,23 @@ func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
 		log.Print("Not handled Heartbeat Request type")
 	case msg.AssociationSetupRequestType:
 		b, err := msg.ProcessAssociationSetupRequest(m)
+		if err == nil {
+			if _, err := conn.WriteTo(b, peer); err != nil {
+				log.Printf("Cannot send Message Type {%d} to client: %v", msg.AssociationSetupResponseType, err)
+			}
+		}
+	case msg.SessionEstablishmentRequestType:
+
+		b, err := msg.ProcessPFCPSessionEstablishmentRequest(m, nodeIP, seid)
 
 		if err == nil {
 			if _, err := conn.WriteTo(b, peer); err != nil {
-				log.Printf("Cannot reply to client: %v", err)
+				log.Printf("Cannot send Message Type {%d} to client: %v", msg.SessionEstablishmentResponseType, err)
 			}
 		}
+		seid = seid + 1
+		log.Printf("Respons [%x]", b)
+
 	default:
 		log.Printf("Not Handled this PFCPMessage: %+v\n", m)
 
