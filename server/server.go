@@ -135,7 +135,6 @@ func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
 			}
 		}
 		seid = seid + 1
-		log.Printf("Respons [%x]", b)
 
 	default:
 		log.Printf("Not Handled this PFCPMessage: %+v\n", m)
