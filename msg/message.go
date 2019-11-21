@@ -126,8 +126,8 @@ type PFCP interface {
 func MessageFromBytes(data []byte) (*PFCPMessage, error) {
 	buf := uio.NewBigEndianBuffer(data)
 	f := buf.Read8()
-	s := 0x01 | f
-	mp := 0x02 | f
+	s := 0x01 & f
+	mp := 0x02 & f
 	v := uint8(f >> 5)
 
 	pfcpMessageType := PFCPType(buf.Read8())

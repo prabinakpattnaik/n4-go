@@ -127,6 +127,7 @@ const (
 	IEActivatePredefinedRules IEType = 106
 	IEDeactivePredeinedRules  IEType = 107
 	IEFARID                   IEType = 108
+	IEQERID                   IEType = 109
 
 	IEUserPlaneIPResourceInformation IEType = 116
 )

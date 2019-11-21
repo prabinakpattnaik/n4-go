@@ -86,7 +86,7 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 		pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(m.Header, &n, &cause, &r, &u, &c, &ui)
 		return pfcpAssociationSetupResponse, nil
 	case SessionEstablishmentRequestType:
-		pfcpSessionEstablishmentRequest := NewPFCPSessionEstablishmentRequest(m.Header, &cpfseid, &createpdr, &createfar, &createurr, &createqer, &createbar, nil, nil, nil, nil, nil, nil)
+		pfcpSessionEstablishmentRequest := NewPFCPSessionEstablishmentRequest(m.Header, &n, &cpfseid, &createpdr, &createfar, &createurr, &createqer, &createbar, nil, nil, nil, nil, nil)
 		return pfcpSessionEstablishmentRequest, nil
 	default:
 		return nil, fmt.Errorf("No matching PFCP Message Type")

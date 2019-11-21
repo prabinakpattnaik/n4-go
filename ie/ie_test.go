@@ -37,7 +37,7 @@ func TestNewInformationElement(t *testing.T) {
 		t.Fatalf("Unexpected length in ii, want 4, have %d", ii.Length)
 	}
 	if bb, _ := ii.Serialize(); !bytes.Equal(bb, ba) {
-		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
+		t.Fatalf("unexpected value. want [%x], have [%x]", ba, bb)
 	}
 
 	t.Log(i)
@@ -60,7 +60,7 @@ func TestIENodeID(t *testing.T) {
 	ba := []byte{0x00, 0x3c, 0x00, 0x5, 0x0, 0xC0, 0xa8, 0x1, 0x65}
 
 	if b, _ := i.Serialize(); !bytes.Equal(b, ba) {
-		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, b)
+		t.Fatalf("unexpected value. want [%x], have [%x]", ba, b)
 	}
 }
 
@@ -79,7 +79,7 @@ func TestIEUPFunctionFeatures(t *testing.T) {
 	ba := []byte{0x00, 0x2B, 0x00, 0x02, 0x00, 0x00}
 
 	if b, _ := i.Serialize(); !bytes.Equal(b, ba) {
-		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, b)
+		t.Fatalf("unexpected value. want [%x], have [%x]", ba, b)
 	}
 
 }
@@ -99,7 +99,7 @@ func TestIECPFunctionFeatures(t *testing.T) {
 	ba := []byte{0x00, 0x59, 0x00, 0x01, 0x00}
 
 	if b, _ := i.Serialize(); !bytes.Equal(b, ba) {
-		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, b)
+		t.Fatalf("unexpected value. want [%x], have [%x]", ba, b)
 	}
 
 }
@@ -118,7 +118,24 @@ func TestIEUserPlaneIPResourceInformation(t *testing.T) {
 	ba := []byte{0x00, 0x74, 0x00, 0x06, 0x11, 0x0F, 0xC0, 0xa8, 0x1, 0x65}
 
 	if b, _ := i.Serialize(); !bytes.Equal(b, ba) {
-		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, b)
+		t.Fatalf("unexpected value. want [%x], have [%x]", ba, b)
 	}
+
+}
+
+func TestCreatePDRFromByte(t *testing.T) {
+	a := []byte{0x00, 0x38, 0x00, 0x02, 0x00, 0x01,
+		0x00, 0x1d, 0x00, 0x04, 0x00, 0x00, 0x00, 0x0a,
+		0x00, 0x02, 0x00, 0x09, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x15, 0x00, 0x00,
+		0x00, 0x5f, 0x00, 0x01, 0x06,
+		0x00, 0x6c, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01}
+
+	var ies InformationElements
+	err := ies.FromBytes(a)
+	if err != nil {
+		t.Fatalf("unexpected %+v\n", err)
+	}
+
+	t.Logf("result %+v\n", ies)
 
 }

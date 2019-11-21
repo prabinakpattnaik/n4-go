@@ -99,3 +99,40 @@ func (c CreatePDR) Serialize() ([]byte, error) {
 	return b, nil
 
 }
+
+func CreatePDRIEsFromBytes(b []byte) (*CreatePDR, error) {
+	var createPDRIEs InformationElements
+	var pdrid, precedence, pdi, ohr, farid, urrid, qerid, activatePredefinedRules *InformationElement
+	err := createPDRIEs.FromBytes(b)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("createPDRIEs %+v\n", createPDRIEs)
+	for _, informationElement := range createPDRIEs {
+		switch informationElement.Type {
+		case IEPDRID:
+			pdrid = &informationElement
+		case IEPrecedence:
+			precedence = &informationElement
+		case IEPDI:
+			pdi = &informationElement
+		case IEOuterHeaderRemoval:
+			ohr = &informationElement
+		case IEFARID:
+			farid = &informationElement
+		case IEURRID:
+			urrid = &informationElement
+		case IEQERID:
+			qerid = &informationElement
+		case IEActivatePredefinedRules:
+			activatePredefinedRules = &informationElement
+
+		default:
+			return nil, fmt.Errorf("No matching needed Information Element for createPDR")
+		}
+
+	}
+	cPDR := NewCreatePDR(pdrid, precedence, pdi, ohr, farid, urrid, qerid, activatePredefinedRules)
+	return cPDR, nil
+
+}
