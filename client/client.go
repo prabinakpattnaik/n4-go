@@ -171,7 +171,23 @@ func main() {
 		if err != nil {
 			log.Print(err)
 		}
-		fmt.Printf("received pfcpSessionEstablishmentResponse %+v\n", UPIPResourceInformation)
+		fmt.Printf("received pfcpSessionEstablishmentResponse [%x]\n", rb)
+		pfcpMessage, err = msg.MessageFromBytes(rb)
+		if err != nil {
+			log.Print(err)
+		}
+		pfcp, err = msg.FromPFCPMessage(pfcpMessage)
+		if err != nil {
+			fmt.Printf("error in FromPFCPMessage() %+v\n", err)
+		}
+		pfcpSessionEstablishmentResponse, ok := pfcp.(msg.PFCPSessionEstablishmentResponse)
+		fmt.Printf("received pfcpSessionEstablishmentResponse %+v\n", pfcpSessionEstablishmentResponse)
+		fmt.Printf("received pfcpSessionEstablishmentResponse Header%+v\n", pfcpSessionEstablishmentResponse.Header)
+
+		if sequenceNumber == pfcpSessionEstablishmentResponse.Header.SequenceNumber {
+			fmt.Printf("sequence number is equal for request and response %d\n", pfcpSessionEstablishmentResponse.Header.SequenceNumber)
+		}
+
 		//TODO: Keep NodeID, UPFunctionFeatures, and UPIPResourceInformation
 
 	}

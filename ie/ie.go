@@ -129,6 +129,7 @@ const (
 	IEFARID                   IEType = 108
 	IEQERID                   IEType = 109
 
+	IEFailedRuleID                   IEType = 114
 	IEUserPlaneIPResourceInformation IEType = 116
 )
 
