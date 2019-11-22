@@ -14,6 +14,7 @@ N4 protocol has defined many Information Elements (IE) which will be included in
 - UserPlaneIPResourceInformation
 - Cause
 - F-SEID
+- UE IPAddress (IPv4)
 
 
 
@@ -30,9 +31,10 @@ PFCP message header is created and tested.
 ## Call Flow
 SMF entity bahaves as client entity and UPF behaves as server. The client should make an association setup request and get association setup response(see section 6.2.6.2). In the association setup response, UP can provide IP resources. Then, client sends session estblishment request and gets a response.
 
-
 By default, TEID allocation/release is mandatory for the control plane. Therefore, FTUP bit in UP Function Features should not be set.
 In this case, TEID allocation/release is not managed by the data plane.
+
+Session establishment includes uplink and downlink traffic in IPv4. It supports Packet Detection Rules(PDR) and Forwarding Action Rules(FAR).
 
 
 # TODO
