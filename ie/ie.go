@@ -266,4 +266,11 @@ func (ies *InformationElements) FromBytes(data []byte) error {
 
 }
 
-//
+type InterfaceValue int
+
+const (
+	Access InterfaceValue = iota
+	Core
+	SGiN6LAN
+	CPFunction
+)
