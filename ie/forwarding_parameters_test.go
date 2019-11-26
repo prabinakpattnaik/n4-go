@@ -56,7 +56,6 @@ func TestIEForwardingParameters(t *testing.T) {
 
 func TestForwardingParameters(t *testing.T) {
 	destinationinterface := uint8(1)
-
 	d := NewInformationElement(
 		IEDestinationInterface,
 		0,
@@ -71,7 +70,6 @@ func TestForwardingParameters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error in serializing %+v", err)
 	}
-	t.Fatalf("data [%x]\n", b)
 
 	ohcIE := NewInformationElement(
 		IEOuterHeaderCreation,
