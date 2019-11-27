@@ -97,7 +97,7 @@ func RecvProcess(c *Client) {
 		if err != nil {
 			log.WithError(err).Fatal("connection reading error")
 		}
-		log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionEstablishmentResponse")
+
 		pfcpMessage, err := msg.MessageFromBytes(rb)
 		if err != nil {
 			log.WithError(err).Info("Error in received pfcpSessionEstablishmentResponse")
@@ -109,12 +109,19 @@ func RecvProcess(c *Client) {
 
 		pfcpSessionEstablishmentResponse, ok := pfcp.(msg.PFCPSessionEstablishmentResponse)
 		if ok {
+			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionEstablishmentResponse")
 
 			sessionRequestResponse := session.SessionRequestResponse{
 				SResponse: &pfcpSessionEstablishmentResponse,
 			}
 
 			sessionEntity.Inc(pfcpSessionEstablishmentResponse.Header.SequenceNumber, sessionRequestResponse)
+
+		}
+		//pfcpSessionModificationResponse
+		_, ok = pfcp.(msg.PFCPSessionModificationResponse)
+		if ok {
+			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionModificationResponse")
 
 		}
 
@@ -214,7 +221,7 @@ func main() {
 			time.Sleep(2 * time.Second)
 
 			fteid, err := setting.Assign_tunnelID(UPIPResourceInformation.IPv4Address, teid)
-			pfcpSessionEstablishmentRequest, err := session.CreateNewSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1)
+			pfcpSessionEstablishmentRequest, err := session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1)
 			if err != nil {
 				log.WithError(err).Error("error in pfcpSessionEstablishmentRequest")
 				continue
@@ -233,10 +240,36 @@ func main() {
 			client.Write(b)
 
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		//TODO: Keep NodeID, UPFunctionFeatures, and UPIPResourceInformation
+		//if we knew SEID,
+		//PDR ID, FAR ID ? unique within a session or anytime?
+		ueIPAddress := net.ParseIP("10.1.1.1")
+		rIPAddress := net.ParseIP("192.168.1.1")
+		rteid := uint32(5000)
+		sn := uint32(101)
+		for i := 0; i < 10; i++ {
+			srr := sessionEntity.Value(sn)
+			sequenceNumber++
+			if srr.SRequest != nil {
+				smr, err := session.ModifySession(srr.SRequest.Header.SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access)
+				if err != nil {
+					log.WithError(err).Error("error in pfcpSessionModificationRequest")
+					continue
 
+				}
+				b, err := smr.Serialize()
+				if err != nil {
+					log.WithError(err).Error("error in pfcpSessionModificationRequest serialization")
+					continue
+				}
+				client.Write(b)
+
+				sn++
+			}
+		}
+		time.Sleep(5 * time.Second)
 	}
 
 }

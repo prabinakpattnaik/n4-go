@@ -44,8 +44,10 @@ func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c, ui *ie.Informatio
 
 func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	var n, r, u, c, ui, cause ie.InformationElement
-	var cpfseid, createpdr, createfar, createurr, createqer, createbar ie.InformationElement
+	var cpfseid, cPDR, cFAR, cURR, cQER, cBAR ie.InformationElement
 	var offending, createdpdr ie.InformationElement
+	var rPDR, rFAR, rURR, rQER, rBAR, rTE ie.InformationElement
+
 	for _, informationElement := range m.IEs {
 		switch informationElement.Type {
 		case ie.IENodeID:
@@ -63,19 +65,31 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 		case ie.IEFSEID:
 			cpfseid = informationElement
 		case ie.IECreatePDR:
-			createpdr = informationElement
+			cPDR = informationElement
 		case ie.IECreateFAR:
-			createfar = informationElement
+			cFAR = informationElement
 		case ie.IECreateURR:
-			createurr = informationElement
+			cURR = informationElement
 		case ie.IECreateQER:
-			createqer = informationElement
+			cQER = informationElement
 		case ie.IECreateBAR:
-			createbar = informationElement
+			cBAR = informationElement
 		case ie.IEOffendingIE:
 			offending = informationElement
 		case ie.IECreatedPDR:
 			createdpdr = informationElement
+		case ie.IERemovePDR:
+			rPDR = informationElement
+		case ie.IERemoveFAR:
+			rFAR = informationElement
+		case ie.IERemoveURR:
+			rURR = informationElement
+		case ie.IERemoveQER:
+			rQER = informationElement
+		case ie.IERemoveBAR:
+			rBAR = informationElement
+		case ie.IERemoveTrafficEndpoint:
+			rTE = informationElement
 
 		default:
 			return nil, fmt.Errorf("No matching needed Information Element")
@@ -91,11 +105,17 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 		pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(m.Header, &n, &cause, &r, &u, &c, &ui)
 		return pfcpAssociationSetupResponse, nil
 	case SessionEstablishmentRequestType:
-		pfcpSessionEstablishmentRequest := NewPFCPSessionEstablishmentRequest(m.Header, &n, &cpfseid, &createpdr, &createfar, &createurr, &createqer, &createbar, nil, nil, nil, nil, nil)
+		pfcpSessionEstablishmentRequest := NewPFCPSessionEstablishmentRequest(m.Header, &n, &cpfseid, &cPDR, &cFAR, &cURR, &cQER, &cBAR, nil, nil, nil, nil, nil)
 		return pfcpSessionEstablishmentRequest, nil
 	case SessionEstablishmentResponseType:
 		pfcpSessionEstablishmentResponse := NewPFCPSessionEstablishmentResponse(m.Header, &n, &cause, &offending, &cpfseid, &createdpdr, nil, nil, nil, nil)
 		return pfcpSessionEstablishmentResponse, nil
+	case SessionModificationRequestType:
+		pfcpSessionModificationRequest := NewPFCPSessionModificationRequest(m.Header, &cpfseid, &rPDR, &rFAR, &rURR, &rQER, &rBAR, &rTE, &cPDR, &cFAR, &cURR, &cQER, &cBAR, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		return pfcpSessionModificationRequest, nil
+	case SessionModificationResponseType:
+		pfcpSessionModificationResponse := NewPFCPSessionModificationResponse(m.Header, &cause, &offending, &createdpdr)
+		return pfcpSessionModificationResponse, nil
 	default:
 		return nil, fmt.Errorf("No matching PFCP Message Type")
 	}

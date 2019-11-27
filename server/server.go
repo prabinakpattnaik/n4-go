@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"bitbucket.org/sothy5/n4-go/msg"
+	"bitbucket.org/sothy5/n4-go/server/internal/session"
 )
 
 var (
@@ -15,6 +16,8 @@ var (
 	ipaddress = "127.0.0.1"
 	seid      = uint64(10000)
 	nodeIP    = net.ParseIP("192.168.1.32")
+
+	seidEntity = session.SEIDEntity{M: make(map[uint64]uint64)}
 )
 
 // Handler is a type that defines the handler function to be called every time a
@@ -126,15 +129,29 @@ func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
 			}
 		}
 	case msg.SessionEstablishmentRequestType:
-
 		b, err := msg.ProcessPFCPSessionEstablishmentRequest(m, nodeIP, seid)
-
 		if err == nil {
 			if _, err := conn.WriteTo(b, peer); err != nil {
 				log.Printf("Cannot send Message Type {%d} to client: %v", msg.SessionEstablishmentResponseType, err)
 			}
 		}
+		seidEntity.Inc(m.Header.SessionEndpointIdentifier, seid)
 		seid = seid + 1
+
+	case msg.SessionModificationRequestType:
+		sSEID := seidEntity.Value(m.Header.SessionEndpointIdentifier)
+		if sSEID > 0 {
+
+			b, err := msg.ProcessPFCPSessionModificationRequest(m, sSEID)
+			if err == nil {
+				if _, err := conn.WriteTo(b, peer); err != nil {
+					log.Printf("Cannot send Message Type {%d} to client: %v", msg.SessionModificationResponseType, err)
+				}
+			}
+
+		} else {
+			log.Printf("Not valid SEID in PFCPMessage: %+v\n", m)
+		}
 
 	default:
 		log.Printf("Not Handled this PFCPMessage: %+v\n", m)

@@ -1,7 +1,10 @@
 package msg
 
 import (
+	"fmt"
+
 	"bitbucket.org/sothy5/n4-go/ie"
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
 //PFCPSessionModificationRequest
@@ -181,6 +184,38 @@ func (smr PFCPSessionModificationRequest) Serialize() ([]byte, error) {
 	//TODO: remaining from UpdateIE, .....
 
 	return output, nil
+
+}
+
+//ProcessPFCPSessionModificationRequest process session modification request and produce the result (either SessionModificationResponse or error)
+func ProcessPFCPSessionModificationRequest(m *PFCPMessage, sSEID uint64) ([]byte, error) {
+	//check if F-SEID is unknown
+	//rule is not there
+	//sucess
+	pfcpMessage, err := FromPFCPMessage(m)
+	if err != nil {
+		return nil, err
+	}
+	pfcpSessionModificationRequest, ok := pfcpMessage.(PFCPSessionModificationRequest)
+
+	if !ok {
+		return nil, fmt.Errorf("PFCP Session EstablishmentModification Request could not type asserted")
+	}
+
+	c := ie.NewInformationElement(
+		ie.IECause,
+		0,
+		dt.OctetString([]byte{0x01}),
+	)
+	length := ie.IEBasicHeaderSize + c.Len()
+	//how to select SEID from sending side.
+	pfcpHeader := NewPFCPHeader(1, false, true, SessionModificationResponseType, length+12, sSEID, pfcpSessionModificationRequest.Header.SequenceNumber, 0)
+	pfcpSessionModificationResponse := NewPFCPSessionModificationResponse(pfcpHeader, &c, nil, nil)
+	b, err := pfcpSessionModificationResponse.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 
 }
 

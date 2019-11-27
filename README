@@ -15,6 +15,9 @@ N4 protocol has defined many Information Elements (IE) which will be included in
 - Cause
 - F-SEID
 - UE IPAddress (IPv4)
+- Create FAR
+- Forwarding Parameters
+- Outer Header Creation
 
 
 
@@ -27,6 +30,7 @@ PFCP message header is created and tested.
 - Association-Setup-Response
 - Session-Establishment-Request
 - Session-Establishment-Response
+- Session-Modification-Request
 
 ## Call Flow
 SMF entity bahaves as client entity and UPF behaves as server. The client should make an association setup request and get association setup response(see section 6.2.6.2). In the association setup response, UP can provide IP resources. Then, client sends session estblishment request and gets a response.
@@ -48,7 +52,6 @@ All necesarry IEs listed in ie.go file and needed to be implemented by order.
 - Association-Update-Response
 - Association-Release-Request
 - Association-Release-Response
-- Session-Modification-Request
 - Session-Modification-Response
 - Session-Deletion-Request
 - Session-Deleteyion-Respone
