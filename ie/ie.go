@@ -131,6 +131,8 @@ const (
 
 	IEFailedRuleID                   IEType = 114
 	IEUserPlaneIPResourceInformation IEType = 116
+
+	IERemoveTrafficEndpoint IEType = 130
 )
 
 //Informatin Element is a Type, length,value group
@@ -273,4 +275,14 @@ const (
 	Core
 	SGiN6LAN
 	CPFunction
+)
+
+type ApplyActionValue int
+
+const (
+	DROP ApplyActionValue = iota + 1
+	FORW
+	BUFF
+	NOCP
+	DUPL
 )
