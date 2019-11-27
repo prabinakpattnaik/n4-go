@@ -125,6 +125,13 @@ func RecvProcess(c *Client) {
 
 		}
 
+		//pfcpSessionModificationResponse
+		_, ok = pfcp.(msg.PFCPSessionDeletionResponse)
+		if ok {
+			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionDeletionResponse")
+
+		}
+
 	}
 
 }
@@ -265,6 +272,21 @@ func main() {
 					continue
 				}
 				client.Write(b)
+
+				sn++
+			}
+		}
+		time.Sleep(7 * time.Second)
+
+		sn = uint32(101)
+		for i := 0; i < 10; i++ {
+			srr := sessionEntity.Value(sn)
+			sequenceNumber++
+			if srr.SRequest != nil {
+				pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionDeletionRequestType, 12, srr.SRequest.Header.SessionEndpointIdentifier, sequenceNumber, 0)
+				b := pfcpHeader.Serialize()
+				client.Write(b)
+				log.WithFields(log.Fields{"data": b}).Info("received pfcpSessionDeletionRequest")
 
 				sn++
 			}

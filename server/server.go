@@ -152,6 +152,20 @@ func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
 		} else {
 			log.Printf("Not valid SEID in PFCPMessage: %+v\n", m)
 		}
+	case msg.SessionDeletionRequestType:
+		sSEID := seidEntity.Value(m.Header.SessionEndpointIdentifier)
+		if sSEID > 0 {
+
+			b, err := msg.ProcessPFCPSessionDeletionRequest(m, sSEID)
+			if err == nil {
+				if _, err := conn.WriteTo(b, peer); err != nil {
+					log.Printf("Cannot send Message Type {%d} to client: %v", msg.SessionModificationResponseType, err)
+				}
+			}
+
+		} else {
+			log.Printf("Not valid SEID in PFCPMessage: %+v\n", m)
+		}
 
 	default:
 		log.Printf("Not Handled this PFCPMessage: %+v\n", m)
