@@ -116,6 +116,9 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	case SessionModificationResponseType:
 		pfcpSessionModificationResponse := NewPFCPSessionModificationResponse(m.Header, &cause, &offending, &createdpdr)
 		return pfcpSessionModificationResponse, nil
+	case SessionDeletionResponseType:
+		pfcpSessionDeletionResponse := NewPFCPSessionDeletionResponse(m.Header, &cause, &offending)
+		return pfcpSessionDeletionResponse, nil
 	default:
 		return nil, fmt.Errorf("No matching PFCP Message Type")
 	}
