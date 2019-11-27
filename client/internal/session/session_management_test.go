@@ -19,7 +19,7 @@ func TestSessionManagement(t *testing.T) {
 	fteid := ie.NewFTEID(true, false, false, false, 255, nodeIP, nil, 0)
 	aa := uint8(2)
 	destionationinterface := uint8(1)
-	pfcpSessionEstablishmentRequest, err := CreateNewSession(sei, sn, nodeIP, seid, pdrid, farid, sourceinterface, fteid, aa, destionationinterface)
+	pfcpSessionEstablishmentRequest, err := CreateSession(sei, sn, nodeIP, seid, pdrid, farid, sourceinterface, fteid, aa, destionationinterface)
 	if err != nil {
 		t.Fatalf("Create New Session Error %+v\n", err)
 	}
