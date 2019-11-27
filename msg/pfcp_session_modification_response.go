@@ -36,7 +36,6 @@ func (smr PFCPSessionModificationResponse) Serialize() ([]byte, error) {
 	}
 
 	dataLength := smr.Len()
-	fmt.Printf("data Legnth %d\n", dataLength)
 	output := make([]byte, dataLength)
 	pfcpend := uint16(PFCPBasicHeaderLength) + PFCPMessageSize
 	copy(output[:pfcpend], smr.Header.Serialize())
