@@ -9,7 +9,7 @@ type PFCPSessionDeletionRequest struct {
 	Header *PFCPHeader
 }
 
-//NewPFCPSessionModificationRequest creates new PFCPSessionMondificationRequst
+//NewPFCPSessionDeletionRequest creates new PFCPSessionDeletionRequst
 func NewPFCPSessionDeletionRequest(h *PFCPHeader) PFCPSessionDeletionRequest {
 	return PFCPSessionDeletionRequest{
 		Header: h,
