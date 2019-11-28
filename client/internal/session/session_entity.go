@@ -7,8 +7,8 @@ import (
 )
 
 type SessionRequestResponse struct {
-	SRequest  *msg.PFCPSessionEstablishmentRequest
-	SResponse *msg.PFCPSessionEstablishmentResponse
+	SRequest  msg.PFCP
+	SResponse msg.PFCP
 }
 
 // SessionEntity is safe to use concurrently.
