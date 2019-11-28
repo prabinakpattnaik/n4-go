@@ -28,6 +28,7 @@ var (
 	UPIPResourceInformationMap map[int]*ie.UPIPResourceInformation
 	teid                       uint32 = 0
 	sessionEntity                     = session.SessionEntity{M: make(map[uint32]session.SessionRequestResponse)}
+	seidsnEntity                      = session.SEIDSNEntity{M: make(map[uint64]session.SNCollection)}
 )
 
 // Client implements a PFCP client
@@ -250,6 +251,7 @@ func main() {
 				SRequest: pfcpSessionEstablishmentRequest,
 			}
 			sessionEntity.Inc(sequenceNumber, sessionRequestResponse)
+			seidsnEntity.Inc(seid, 1, sequenceNumber)
 			client.Write(b)
 
 		}
@@ -281,6 +283,7 @@ func main() {
 					SRequest: smr,
 				}
 				sessionEntity.Inc(sequenceNumber, sessionRequestResponse)
+				seidsnEntity.Inc(srr.SRequest.GetHeader().SessionEndpointIdentifier, 2, sequenceNumber)
 				sn++
 			}
 		}
@@ -303,6 +306,7 @@ func main() {
 					SRequest: &sdr,
 				}
 				sessionEntity.Inc(sequenceNumber, sessionRequestResponse)
+				seidsnEntity.Inc(srr.SRequest.GetHeader().SessionEndpointIdentifier, 3, sequenceNumber)
 			}
 		}
 		time.Sleep(5 * time.Second)
