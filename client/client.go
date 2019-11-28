@@ -110,25 +110,31 @@ func RecvProcess(c *Client) {
 		pfcpSessionEstablishmentResponse, ok := pfcp.(msg.PFCPSessionEstablishmentResponse)
 		if ok {
 			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionEstablishmentResponse")
-
 			sessionRequestResponse := session.SessionRequestResponse{
 				SResponse: &pfcpSessionEstablishmentResponse,
 			}
-
 			sessionEntity.Inc(pfcpSessionEstablishmentResponse.Header.SequenceNumber, sessionRequestResponse)
 
 		}
 		//pfcpSessionModificationResponse
-		_, ok = pfcp.(msg.PFCPSessionModificationResponse)
+		pfcpSessionModificationResponse, ok := pfcp.(msg.PFCPSessionModificationResponse)
 		if ok {
 			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionModificationResponse")
+			sessionRequestResponse := session.SessionRequestResponse{
+				SResponse: &pfcpSessionModificationResponse,
+			}
+			sessionEntity.Inc(pfcpSessionModificationResponse.Header.SequenceNumber, sessionRequestResponse)
 
 		}
 
 		//pfcpSessionModificationResponse
-		_, ok = pfcp.(msg.PFCPSessionDeletionResponse)
+		pfcpSessionDeletionResponse, ok := pfcp.(msg.PFCPSessionDeletionResponse)
 		if ok {
 			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionDeletionResponse")
+			sessionRequestResponse := session.SessionRequestResponse{
+				SResponse: &pfcpSessionDeletionResponse,
+			}
+			sessionEntity.Inc(pfcpSessionDeletionResponse.Header.SequenceNumber, sessionRequestResponse)
 
 		}
 
@@ -260,11 +266,10 @@ func main() {
 			srr := sessionEntity.Value(sn)
 			sequenceNumber++
 			if srr.SRequest != nil {
-				smr, err := session.ModifySession(srr.SRequest.Header.SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access)
+				smr, err := session.ModifySession(srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access)
 				if err != nil {
 					log.WithError(err).Error("error in pfcpSessionModificationRequest")
 					continue
-
 				}
 				b, err := smr.Serialize()
 				if err != nil {
@@ -272,7 +277,10 @@ func main() {
 					continue
 				}
 				client.Write(b)
-
+				sessionRequestResponse := session.SessionRequestResponse{
+					SRequest: smr,
+				}
+				sessionEntity.Inc(sequenceNumber, sessionRequestResponse)
 				sn++
 			}
 		}
@@ -283,15 +291,22 @@ func main() {
 			srr := sessionEntity.Value(sn)
 			sequenceNumber++
 			if srr.SRequest != nil {
-				pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionDeletionRequestType, 12, srr.SRequest.Header.SessionEndpointIdentifier, sequenceNumber, 0)
+				pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionDeletionRequestType, 12, srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 0)
 				b := pfcpHeader.Serialize()
 				client.Write(b)
 				log.WithFields(log.Fields{"data": b}).Info("received pfcpSessionDeletionRequest")
 
 				sn++
+
+				sdr := msg.NewPFCPSessionDeletionRequest(pfcpHeader)
+				sessionRequestResponse := session.SessionRequestResponse{
+					SRequest: &sdr,
+				}
+				sessionEntity.Inc(sequenceNumber, sessionRequestResponse)
 			}
 		}
 		time.Sleep(5 * time.Second)
+
 	}
 
 }
