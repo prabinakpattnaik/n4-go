@@ -22,11 +22,11 @@ type PFCPAssociationSetupRequest struct {
 	RecoveryTimeStamp              *ie.InformationElement
 	UPFunctionFeatures             *ie.InformationElement
 	CPFunctionFeatures             *ie.InformationElement
-	UserPlaneIPResourceInformation *ie.InformationElement
+	UserPlaneIPResourceInformation ie.InformationElements
 }
 
 //NewPFCPAssociationSetupRequest creates new PFCPAssociationSetupRequst
-func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c, ui *ie.InformationElement) PFCPAssociationSetupRequest {
+func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c *ie.InformationElement, ui ie.InformationElements) PFCPAssociationSetupRequest {
 	//if n.Type == ie.IEReserved || r.Type == ie.IEReserved {
 	//	return nil
 	//}
@@ -43,10 +43,11 @@ func NewPFCPAssociationSetupRequest(h *PFCPHeader, n, r, u, c, ui *ie.Informatio
 }
 
 func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
-	var n, r, u, c, ui, cause ie.InformationElement
+	var n, r, u, c, cause ie.InformationElement
 	var cpfseid, cPDR, cFAR, cURR, cQER, cBAR ie.InformationElement
 	var offending, createdpdr ie.InformationElement
 	var rPDR, rFAR, rURR, rQER, rBAR, rTE ie.InformationElement
+	var uis ie.InformationElements
 
 	for _, informationElement := range m.IEs {
 		switch informationElement.Type {
@@ -59,7 +60,7 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 		case ie.IECPFunctionFeatures:
 			c = informationElement
 		case ie.IEUserPlaneIPResourceInformation:
-			ui = informationElement
+			uis = append(uis, informationElement)
 		case ie.IECause:
 			cause = informationElement
 		case ie.IEFSEID:
@@ -99,10 +100,10 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 
 	switch m.Header.MessageType {
 	case AssociationSetupRequestType:
-		pfcpAssociationSetupRequest := NewPFCPAssociationSetupRequest(m.Header, &n, &r, &u, &c, &ui)
+		pfcpAssociationSetupRequest := NewPFCPAssociationSetupRequest(m.Header, &n, &r, &u, &c, uis)
 		return pfcpAssociationSetupRequest, nil
 	case AssociationSetupResponseType:
-		pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(m.Header, &n, &cause, &r, &u, &c, &ui)
+		pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(m.Header, &n, &cause, &r, &u, &c, uis)
 		return pfcpAssociationSetupResponse, nil
 	case SessionEstablishmentRequestType:
 		pfcpSessionEstablishmentRequest := NewPFCPSessionEstablishmentRequest(m.Header, &n, &cpfseid, &cPDR, &cFAR, &cURR, &cQER, &cBAR, nil, nil, nil, nil, nil)
@@ -189,7 +190,9 @@ func ProcessAssociationSetupRequest(m *PFCPMessage) ([]byte, error) {
 	header := pfcpAssociationSetupRequest.GetHeader()
 	header.MessageType = AssociationSetupResponseType
 	header.MessageLength = length
-	pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(header, &n, &c, &r, &upFunctionFeaturesIE, nil, &ui)
+	var uis ie.InformationElements
+	uis = append(uis, ui)
+	pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(header, &n, &c, &r, &upFunctionFeaturesIE, nil, uis)
 	b, err = pfcpAssociationSetupResponse.Serialize()
 	if err != nil {
 		return nil, err
@@ -235,12 +238,18 @@ func (ar PFCPAssociationSetupRequest) Serialize() ([]byte, error) {
 		}
 
 	}
-	if ar.UserPlaneIPResourceInformation != nil {
-		ib, _ := ar.UserPlaneIPResourceInformation.Serialize()
+	if len(ar.UserPlaneIPResourceInformation) > 0 {
+		for _, informationElement := range ar.UserPlaneIPResourceInformation {
+			ib, err := informationElement.Serialize()
+			if err != nil {
+				return nil, err
+			}
 
-		if upFunctionFeaturesEnd > 0 && cpFunctionFeaturesEnd == 0 {
-			upIPResourceInformationEnd = upFunctionFeaturesEnd + ie.IEBasicHeaderSize + ar.UserPlaneIPResourceInformation.Len()
-			copy(output[upFunctionFeaturesEnd:upIPResourceInformationEnd], ib)
+			if upFunctionFeaturesEnd > 0 && cpFunctionFeaturesEnd == 0 {
+				upIPResourceInformationEnd = upFunctionFeaturesEnd + uint16(len(ib))
+				copy(output[upFunctionFeaturesEnd:upIPResourceInformationEnd], ib)
+				upFunctionFeaturesEnd = upIPResourceInformationEnd
+			}
 		}
 	}
 
