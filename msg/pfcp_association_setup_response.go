@@ -13,10 +13,10 @@ type PFCPAssociationSetupResponse struct {
 	RecoveryTimeStamp              *ie.InformationElement
 	UPFunctionFeatures             *ie.InformationElement
 	CPFunctionFeatures             *ie.InformationElement
-	UserPlaneIPResourceInformation *ie.InformationElement
+	UserPlaneIPResourceInformation ie.InformationElements
 }
 
-func NewPFCPAssociationSetupResponse(h *PFCPHeader, n, cause, r, u, c, ui *ie.InformationElement) PFCP {
+func NewPFCPAssociationSetupResponse(h *PFCPHeader, n, cause, r, u, c *ie.InformationElement, ui ie.InformationElements) PFCP {
 
 	//if n == nil || r == nil {
 	//	return nil
@@ -90,16 +90,23 @@ func (res PFCPAssociationSetupResponse) Serialize() ([]byte, error) {
 		}
 
 	}
-	if res.UserPlaneIPResourceInformation != nil {
-		ib, err := res.UserPlaneIPResourceInformation.Serialize()
+	if len(res.UserPlaneIPResourceInformation) > 0 {
+		for _, informationElement := range res.UserPlaneIPResourceInformation {
 
-		if err != nil {
-			return nil, err
+			ib, err := informationElement.Serialize()
+
+			if err != nil {
+				return nil, err
+			}
+
+			if upFunctionFeaturesEnd > 0 && cpFunctionFeaturesEnd == 0 {
+				newUPResourceInformationEnd := upFunctionFeaturesEnd + uint16(len(ib))
+				//upIPResourceInformationEnd = upFunctionFeaturesEnd + ie.IEBasicHeaderSize + res.UserPlaneIPResourceInformation.Len()
+				copy(output[upFunctionFeaturesEnd:newUPResourceInformationEnd], ib)
+				upFunctionFeaturesEnd = upFunctionFeaturesEnd + uint16(len(ib))
+			}
 		}
-		if upFunctionFeaturesEnd > 0 && cpFunctionFeaturesEnd == 0 {
-			//upIPResourceInformationEnd = upFunctionFeaturesEnd + ie.IEBasicHeaderSize + res.UserPlaneIPResourceInformation.Len()
-			copy(output[upFunctionFeaturesEnd:], ib)
-		}
+
 	}
 
 	return output, nil
