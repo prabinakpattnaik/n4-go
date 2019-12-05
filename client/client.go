@@ -29,6 +29,7 @@ var (
 	teid                       uint32 = 0
 	sessionEntity                     = session.SessionEntity{M: make(map[uint32]session.SessionRequestResponse)}
 	seidsnEntity                      = session.SEIDSNEntity{M: make(map[uint64]session.SNCollection)}
+	NetworkInstance                   = "epc"
 )
 
 // Client implements a PFCP client
@@ -204,38 +205,49 @@ func main() {
 		if !ok {
 			log.WithError(err).Fatal("wrong type asseration of PFCPAssociationSetupResponse")
 		}
-		log.WithFields(log.Fields{"UserPlaneIPResourceInformation": pfcpAssociationSetupResponse.UserPlaneIPResourceInformation}).Info("Received Information")
-		b, err := pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Serialize()
-		if err != nil {
-			log.WithError(err).Fatal("error in pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Serialize")
 
+		var upIPRIs []ie.UPIPResourceInformation
+		for _, informationElement := range pfcpAssociationSetupResponse.UserPlaneIPResourceInformation {
+			b, _ := informationElement.Serialize()
+			upIPResourceInformation := ie.NewUPIPResourceInformationFromByte(informationElement.Len(), b[4:])
+			log.WithFields(log.Fields{"V4": upIPResourceInformation.V4,
+				"V6":              upIPResourceInformation.V6,
+				"TEIDRI":          upIPResourceInformation.TEIDRI,
+				"ASSONI":          upIPResourceInformation.ASSONI,
+				"ASSOSI":          upIPResourceInformation.ASSOSI,
+				"TEIDRange":       upIPResourceInformation.TEIDRange,
+				"IPv4Address":     upIPResourceInformation.IPv4Address,
+				"IPv6Address":     upIPResourceInformation.IPv6Address,
+				"NetworkInstance": upIPResourceInformation.NetworkInstance,
+				"SourceInterface": upIPResourceInformation.SourceInterface,
+			}).Info("Received UserPlaneIPResourceInformation")
+			upIPRIs = append(upIPRIs, *upIPResourceInformation)
 		}
-		UPIPResourceInformation := ie.NewUPIPResourceInformationFromByte(pfcpAssociationSetupResponse.UserPlaneIPResourceInformation.Length, b[4:])
-		log.WithFields(log.Fields{"V4": UPIPResourceInformation.V4,
-			"V6":              UPIPResourceInformation.V6,
-			"TEIDRI":          UPIPResourceInformation.TEIDRI,
-			"ASSONI":          UPIPResourceInformation.ASSONI,
-			"ASSOSI":          UPIPResourceInformation.ASSOSI,
-			"TEIDRange":       UPIPResourceInformation.TEIDRange,
-			"IPv4Address":     UPIPResourceInformation.IPv4Address,
-			"IPv6Address":     UPIPResourceInformation.IPv6Address,
-			"NetworkInstance": UPIPResourceInformation.NetworkInstance,
-			"SourceInterface": UPIPResourceInformation.SourceInterface,
-		}).Info("Received UserPlaneIPResourceInformation")
-
 		//setting := make(map[int]*ie.UPIPResourceInformation)
 		//setting[1] = UPIPResourceInformation
 
 		go RecvProcess(client)
 
+		var upIPRI ie.UPIPResourceInformation
 		for i := 0; i < 10; i++ {
 			teid++
 			sequenceNumber++
 			seid++
 			time.Sleep(2 * time.Second)
 
-			fteid, err := setting.Assign_tunnelID(UPIPResourceInformation.IPv4Address, teid)
-			pfcpSessionEstablishmentRequest, err := session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1)
+			l := len(upIPRIs)
+			if l == 1 {
+				upIPRI = upIPRIs[0]
+			} else if l > 1 {
+				for _, u := range upIPRIs {
+					if string(u.NetworkInstance) == NetworkInstance {
+						upIPRI = u
+					}
+				}
+			}
+
+			fteid, err := setting.Assign_tunnelID(upIPRI.IPv4Address, teid)
+			pfcpSessionEstablishmentRequest, err := session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, upIPRI.NetworkInstance)
 			if err != nil {
 				log.WithError(err).Error("error in pfcpSessionEstablishmentRequest")
 				continue
@@ -268,7 +280,7 @@ func main() {
 			srr := sessionEntity.Value(sn)
 			sequenceNumber++
 			if srr.SRequest != nil {
-				smr, err := session.ModifySession(srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access)
+				smr, err := session.ModifySession(srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access, upIPRI.NetworkInstance)
 				if err != nil {
 					log.WithError(err).Error("error in pfcpSessionModificationRequest")
 					continue
