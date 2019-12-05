@@ -41,39 +41,53 @@ func NewUPIPResourceInformationFromByte(length uint16, input []byte) *UPIPResour
 	firstByte := input[0]
 	isV4 := (uint8(firstByte&0x01) == 1)
 	isV6 := (uint8(firstByte&0x02) == 1)
-	teidRi := firstByte & 0x1C
-	assoni := (uint8(firstByte&0x20) == 1)
-	assosi := (uint8(firstByte&0x40) == 1)
+	teidRi := (firstByte & 0x1C) >> 2
+	assoni := (uint8(firstByte&0x20) == 0x20)
+	assosi := (uint8(firstByte&0x40) == 0x40)
 
 	//eighth bit of firstbyte is not tested
 	if !(isV4 || isV6) {
 		return nil
 	}
-	//importance of assoni and assosi is not taken
-	// TEID range indication
-
+	//source interface is not there
+	teidRange := uint8(input[1])
 	var ip4address, ip6address []byte
+	var ni []byte
 
 	if isV4 {
 		ip4address = input[2:6]
 		if isV6 {
 			ip6address = input[6:21]
+			if assoni {
+				ni = input[21:]
+			}
+		} else {
+			if assoni {
+				ni = input[6:]
+			}
 		}
+
 	} else {
 		if isV6 {
 			ip6address = input[2:17]
+			if assoni {
+				ni = input[17:]
+			}
 		}
 	}
-	//Network instance and source interface details missing
+
+	//TODO:source interface details missing
 
 	return &UPIPResourceInformation{
-		V4:          isV4,
-		V6:          isV6,
-		TEIDRI:      teidRi,
-		ASSONI:      assoni,
-		ASSOSI:      assosi,
-		IPv4Address: ip4address,
-		IPv6Address: ip6address,
+		V4:              isV4,
+		V6:              isV6,
+		TEIDRI:          teidRi,
+		ASSONI:          assoni,
+		ASSOSI:          assosi,
+		TEIDRange:       teidRange,
+		IPv4Address:     ip4address,
+		IPv6Address:     ip6address,
+		NetworkInstance: ni,
 	}
 
 }

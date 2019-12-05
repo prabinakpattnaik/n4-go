@@ -7,13 +7,16 @@ import (
 )
 
 func TestUPIPResourceFunction(t *testing.T) {
-	data := []byte{0x11, 0x0f, 0xC0, 0xa8, 0x1, 0x65}
-	ipaddress := []byte{0xC0, 0xa8, 0x1, 0x65}
+	data := []byte{0x29, 0x80, 0xac, 0x13, 0x00, 0x02, 0x02, 0x63, 0x70}
+	ipaddress := []byte{0xac, 0x13, 0x00, 0x02}
 
-	upIPResourceInformation := NewUPIPResourceInformationFromByte(6, data)
+	upIPResourceInformation := NewUPIPResourceInformationFromByte(9, data)
 	if !bytes.Equal(upIPResourceInformation.IPv4Address, ipaddress) {
 		t.Fatalf("unexpected value. want [%x], have [%x]", ipaddress, upIPResourceInformation.IPv4Address)
 
+	}
+	if !upIPResourceInformation.ASSONI {
+		t.Fatalf("unexpected value. want true, have %t", upIPResourceInformation.ASSONI)
 	}
 
 }
