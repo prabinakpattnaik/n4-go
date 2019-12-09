@@ -20,7 +20,7 @@ func ProcessPFCPSessionEstablishmentResponse(m *msg.PFCPMessage) ([]byte, error)
 	return nil, nil
 }
 
-func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint16, farid uint32, sourceinterface uint8, fteid *ie.FTEID, aa, destionationinterface uint8) (*msg.PFCPSessionEstablishmentRequest, error) {
+func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint16, farid uint32, sourceinterface uint8, fteid *ie.FTEID, aa, destionationinterface uint8, ni []byte) (*msg.PFCPSessionEstablishmentRequest, error) {
 	//TODO nodeIP is IPv4 address.
 	// Need to change when accomadating FQDN
 	// SN incremental (request and response has same value)
@@ -64,8 +64,16 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 		0,
 		dt.OctetString(bb),
 	)
+	var networkInstance ie.InformationElement
+	if len(ni) > 0 {
+		networkInstance = ie.NewInformationElement(
+			ie.IENetworkInstance,
+			0,
+			dt.OctetString(ni),
+		)
+	}
 
-	pdi := ie.NewPDI(&si, &fteidIE, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	pdi := ie.NewPDI(&si, &fteidIE, &networkInstance, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	bb, err = pdi.Serialize()
 	if err != nil {
 		return nil, err
@@ -160,7 +168,7 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 
 }
 
-func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinterface ie.InterfaceValue, ueipAddress net.IP, teid uint32, remoteIP net.IP, aa uint8, dInterface ie.InterfaceValue) (*msg.PFCPSessionModificationRequest, error) {
+func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinterface ie.InterfaceValue, ueipAddress net.IP, teid uint32, remoteIP net.IP, aa uint8, dInterface ie.InterfaceValue, ni []byte) (*msg.PFCPSessionModificationRequest, error) {
 	d := make([]byte, 2)
 	binary.BigEndian.PutUint16(d, pdrid)
 	pdrIDIE := ie.NewInformationElement(
@@ -198,7 +206,16 @@ func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinte
 		dt.OctetString(bb),
 	)
 
-	pdi := ie.NewPDI(&si, nil, nil, &ueIPAddressIE, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	var networkInstance ie.InformationElement
+	if len(ni) > 0 {
+		networkInstance = ie.NewInformationElement(
+			ie.IENetworkInstance,
+			0,
+			dt.OctetString(ni),
+		)
+	}
+
+	pdi := ie.NewPDI(&si, nil, &networkInstance, &ueIPAddressIE, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	pdiB, err := pdi.Serialize()
 	if err != nil {
 		return nil, err
