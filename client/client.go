@@ -109,6 +109,25 @@ func RecvProcess(c *Client) {
 		if err != nil {
 			log.WithError(err).Info("error in FromPFCPMessage")
 		}
+		pfcpHeartbeat, ok := pfcp.(msg.Heartbeat)
+		if ok {
+			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionEstablishmentResponse")
+			h := pfcpHeartbeat.Header
+			if h.MessageType == msg.HeartbeatRequestType {
+				r := ie.NewInformationElement(
+					ie.IERecoveryTimestamp,
+					0,
+					dt.Time(time.Now()),
+				)
+				h.MessageType = msg.HeartbeatResponseType
+				h.MessageLength = msg.PFCPBasicMessageSize + ie.IEBasicHeaderSize + r.Len()
+				heartbeat := msg.NewHeartbeat(h, &r)
+				b, _ := heartbeat.Serialize()
+				c.Write(b)
+				continue
+			}
+
+		}
 
 		pfcpSessionEstablishmentResponse, ok := pfcp.(msg.PFCPSessionEstablishmentResponse)
 		if ok {
@@ -117,6 +136,7 @@ func RecvProcess(c *Client) {
 				SResponse: &pfcpSessionEstablishmentResponse,
 			}
 			sessionEntity.Inc(pfcpSessionEstablishmentResponse.Header.SequenceNumber, sessionRequestResponse)
+			continue
 
 		}
 		//pfcpSessionModificationResponse
@@ -127,7 +147,7 @@ func RecvProcess(c *Client) {
 				SResponse: &pfcpSessionModificationResponse,
 			}
 			sessionEntity.Inc(pfcpSessionModificationResponse.Header.SequenceNumber, sessionRequestResponse)
-
+			continue
 		}
 
 		//pfcpSessionModificationResponse
@@ -138,7 +158,7 @@ func RecvProcess(c *Client) {
 				SResponse: &pfcpSessionDeletionResponse,
 			}
 			sessionEntity.Inc(pfcpSessionDeletionResponse.Header.SequenceNumber, sessionRequestResponse)
-
+			continue
 		}
 
 	}
