@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"bitbucket.org/sothy5/n4-go/msg"
@@ -12,17 +13,16 @@ import (
 	"bitbucket.org/sothy5/n4-go/ie"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 )
 
 var (
-	udpport           = 8805
-	maxBufferSize     = 1024
-	remoteIPv4address = net.IPv4(127, 0, 0, 1)
-	sequenceNumber    = uint32(100)
-	seid              = uint64(100)
+	udpport       = 8805
+	maxBufferSize = 1024
 
-	controlPlaneNodeID         = []byte{0x0, 0xC0, 0xa8, 0x1, 0x20}
-	nodeIP                     = net.ParseIP("192.168.1.32")
+	sequenceNumber = uint32(100)
+	seid           = uint64(100)
+
 	controlFunctionFeatures    = []byte{0x00}
 	PFCPMinHeaderSize          = 8
 	UPIPResourceInformationMap map[int]*ie.UPIPResourceInformation
@@ -40,7 +40,8 @@ type Client struct {
 }
 
 // NewClient returns a Client with default settings
-func NewClient() *Client {
+func NewClient(rAddress string) *Client {
+	remoteIPv4address := net.ParseIP(rAddress)
 	raddr := fmt.Sprintf("%s:%d", remoteIPv4address, udpport)
 
 	dst, err := net.ResolveUDPAddr("udp", raddr)
@@ -144,9 +145,13 @@ func RecvProcess(c *Client) {
 
 }
 
-func main() {
+func run(c *cli.Context) error {
 
-	client := NewClient()
+	nodeIP := net.ParseIP(c.String("localIP"))
+	controlPlaneNodeID := []byte{0x0}
+	controlPlaneNodeID = append(controlPlaneNodeID, nodeIP...)
+	rIPv4address := c.String("remoteIP")
+	client := NewClient(rIPv4address)
 
 	//TODO: create HeartBeat Request
 	//Create PFCPAssociationSetupRequest
@@ -172,17 +177,17 @@ func main() {
 	)
 	length = length + r.Len() + ie.IEBasicHeaderSize
 
-	c := ie.NewInformationElement(
+	cp := ie.NewInformationElement(
 		ie.IECPFunctionFeatures,
 		0,
 		dt.OctetString(controlFunctionFeatures),
 	)
-	length = length + c.Len() + ie.IEBasicHeaderSize
+	length = length + cp.Len() + ie.IEBasicHeaderSize
 
 	length = length + msg.PFCPBasicMessageSize
 	pfcpHeader := msg.NewPFCPHeader(1, false, false, msg.AssociationSetupRequestType, length, 0, sequenceNumber, 0)
 
-	ar := msg.NewPFCPAssociationSetupRequest(pfcpHeader, &n, &r, nil, &c, nil)
+	ar := msg.NewPFCPAssociationSetupRequest(pfcpHeader, &n, &r, nil, &cp, nil)
 	b, _ := ar.Serialize()
 	if len(b) > PFCPMinHeaderSize {
 		client.Write(b)
@@ -229,24 +234,47 @@ func main() {
 		go RecvProcess(client)
 
 		var upIPRI ie.UPIPResourceInformation
+
+		l := len(upIPRIs)
+		if l == 1 {
+			upIPRI = upIPRIs[0]
+		} else if l > 1 {
+			for _, u := range upIPRIs {
+				fmt.Printf("u.NetworkInstance [%x]\n", u.NetworkInstance)
+				fmt.Printf("Network Instance %s\n", NetworkInstance)
+				if string(u.NetworkInstance[1:]) == NetworkInstance {
+					upIPRI = u
+
+				}
+			}
+		}
+
+		log.WithFields(log.Fields{"V4": upIPRI.V4,
+			"V6":              upIPRI.V6,
+			"TEIDRI":          upIPRI.TEIDRI,
+			"ASSONI":          upIPRI.ASSONI,
+			"ASSOSI":          upIPRI.ASSOSI,
+			"TEIDRange":       upIPRI.TEIDRange,
+			"IPv4Address":     upIPRI.IPv4Address,
+			"IPv6Address":     upIPRI.IPv6Address,
+			"NetworkInstance": upIPRI.NetworkInstance,
+			"SourceInterface": upIPRI.SourceInterface,
+		}).Info("selected  UserPlaneIPResourceInformation for TEID allocation")
+		if upIPRI.TEIDRI > 0 {
+			//TODO
+			v := upIPRI.TEIDRange << (8 - upIPRI.TEIDRI)
+			teid = uint32(v) << 24
+
+		}
+
 		for i := 0; i < 10; i++ {
 			teid++
 			sequenceNumber++
 			seid++
 			time.Sleep(2 * time.Second)
 
-			l := len(upIPRIs)
-			if l == 1 {
-				upIPRI = upIPRIs[0]
-			} else if l > 1 {
-				for _, u := range upIPRIs {
-					if string(u.NetworkInstance) == NetworkInstance {
-						upIPRI = u
-					}
-				}
-			}
-
 			fteid, err := setting.Assign_tunnelID(upIPRI.IPv4Address, teid)
+			log.WithFields(log.Fields{"Ftied V4": upIPRI.IPv4Address}).Info("FTEID IPv4 address")
 			pfcpSessionEstablishmentRequest, err := session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, upIPRI.NetworkInstance)
 			if err != nil {
 				log.WithError(err).Error("error in pfcpSessionEstablishmentRequest")
@@ -324,5 +352,28 @@ func main() {
 		time.Sleep(5 * time.Second)
 
 	}
+	return nil
+
+}
+
+func main() {
+	app := cli.NewApp()
+	app.Name = "N4-Go-Client"
+	app.Usage = "N4-Go-Client"
+	app.Action = run
+	app.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:  "localIP,l",
+			Usage: "localIP address",
+			Value: "127.0.0.1",
+		},
+		&cli.StringFlag{
+			Name:  "remoteIP,r",
+			Usage: "remoteIP address",
+			Value: "127.0.0.1",
+		},
+	}
+
+	app.Run(os.Args)
 
 }

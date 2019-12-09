@@ -93,7 +93,8 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 			rTE = informationElement
 
 		default:
-			return nil, fmt.Errorf("No matching needed Information Element")
+			fmt.Printf("unhandled information element %+v\n", informationElement)
+			//return nil, fmt.Errorf("No matching needed Information Element")
 		}
 
 	}

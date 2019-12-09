@@ -34,7 +34,6 @@ func NewFTEID(isv4, isv6, ch, chid bool, teid uint32, ipv4address, ipv6address n
 //Serialize converts FTEID into byte array
 func (f *FTEID) Serialize() ([]byte, error) {
 	var firstbyte uint8
-	var b []byte
 	var ip []byte
 
 	if f.IsV4 {
@@ -74,5 +73,5 @@ func (f *FTEID) Serialize() ([]byte, error) {
 		fteid = append(fteid, f.CHOOSEID)
 	}
 
-	return b, nil
+	return fteid, nil
 }
