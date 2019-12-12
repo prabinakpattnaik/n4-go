@@ -36,3 +36,11 @@ func (hr Heartbeat) Len() uint16 {
 	return uint16(PFCPBasicHeaderLength) + hr.Header.MessageLength
 
 }
+
+func (hr Heartbeat) Type() PFCPType {
+	return hr.Header.MessageType
+}
+
+func (hr Heartbeat) GetHeader() *PFCPHeader {
+	return hr.Header
+}

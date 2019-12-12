@@ -100,6 +100,9 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	}
 
 	switch m.Header.MessageType {
+	case HeartbeatRequestType:
+		pfcpHeartbeatRequest := NewHeartbeat(m.Header, &r)
+		return pfcpHeartbeatRequest, nil
 	case AssociationSetupRequestType:
 		pfcpAssociationSetupRequest := NewPFCPAssociationSetupRequest(m.Header, &n, &r, &u, &c, uis)
 		return pfcpAssociationSetupRequest, nil

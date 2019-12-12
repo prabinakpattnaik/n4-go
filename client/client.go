@@ -40,17 +40,20 @@ type Client struct {
 }
 
 // NewClient returns a Client with default settings
-func NewClient(rAddress string) *Client {
+func NewClient(rAddress string, lAddress string) *Client {
 	remoteIPv4address := net.ParseIP(rAddress)
 	raddr := fmt.Sprintf("%s:%d", remoteIPv4address, udpport)
-
 	dst, err := net.ResolveUDPAddr("udp", raddr)
+
+	localIPv4address := net.ParseIP(lAddress)
+	laddr := fmt.Sprintf("%s:%d", localIPv4address, udpport)
+	la, err := net.ResolveUDPAddr("udp", laddr)
 
 	if err != nil {
 		log.WithError(err).Error("resolveUDP Addr err ")
 	}
 
-	conn, err := net.DialUDP("udp4", nil, dst)
+	conn, err := net.DialUDP("udp4", la, dst)
 	if err != nil {
 		//TODO handle this error
 		log.WithError(err).Error("failure in connection setup")
@@ -103,7 +106,7 @@ func RecvProcess(c *Client) {
 
 		pfcpMessage, err := msg.MessageFromBytes(rb)
 		if err != nil {
-			log.WithError(err).Info("Error in received pfcpSessionEstablishmentResponse")
+			log.WithError(err).Info("Error in received pfcpMessage")
 		}
 		pfcp, err := msg.FromPFCPMessage(pfcpMessage)
 		if err != nil {
@@ -117,6 +120,7 @@ func RecvProcess(c *Client) {
 				SResponse: &pfcpSessionEstablishmentResponse,
 			}
 			sessionEntity.Inc(pfcpSessionEstablishmentResponse.Header.SequenceNumber, sessionRequestResponse)
+			continue
 
 		}
 		//pfcpSessionModificationResponse
@@ -127,7 +131,7 @@ func RecvProcess(c *Client) {
 				SResponse: &pfcpSessionModificationResponse,
 			}
 			sessionEntity.Inc(pfcpSessionModificationResponse.Header.SequenceNumber, sessionRequestResponse)
-
+			continue
 		}
 
 		//pfcpSessionModificationResponse
@@ -138,20 +142,40 @@ func RecvProcess(c *Client) {
 				SResponse: &pfcpSessionDeletionResponse,
 			}
 			sessionEntity.Inc(pfcpSessionDeletionResponse.Header.SequenceNumber, sessionRequestResponse)
-
+			continue
 		}
+		/*
+			if pfcp.Type() == msg.HeartbeatRequestType {
+				log.WithFields(log.Fields{"data": rb}).Info("received PFCPHeartbeat Request")
+				r := ie.NewInformationElement(
+					ie.IERecoveryTimestamp,
+					0,
+					dt.Time(time.Now()),
+				)
+				h := pfcp.GetHeader()
+				h.MessageType = msg.HeartbeatResponseType
+				h.MessageLength = msg.PFCPBasicMessageSize + ie.IEBasicHeaderSize + r.Len()
+				heartbeat := msg.NewHeartbeat(h, &r)
+				b, _ := heartbeat.Serialize()
+				c.Write(b)
+				continue
+			}
+		*/
+
+		log.WithFields(log.Fields{"data": rb}).Info("something went")
 
 	}
 
 }
 
 func run(c *cli.Context) error {
-
-	nodeIP := net.ParseIP(c.String("localIP"))
+	lIPv4address := c.String("localIP")
+	nodeIP := net.ParseIP(lIPv4address)
 	controlPlaneNodeID := []byte{0x0}
-	controlPlaneNodeID = append(controlPlaneNodeID, nodeIP...)
+	controlPlaneNodeID = append(controlPlaneNodeID, nodeIP.To4()...)
+	fmt.Printf("control plane NodeID [%x]\n", controlPlaneNodeID)
 	rIPv4address := c.String("remoteIP")
-	client := NewClient(rIPv4address)
+	client := NewClient(rIPv4address, lIPv4address)
 
 	//TODO: create HeartBeat Request
 	//Create PFCPAssociationSetupRequest

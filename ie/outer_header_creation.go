@@ -29,7 +29,7 @@ func NewOuterHeaderCreation(ohcd uint8, teid uint32, ipv4address, ipv6address ne
 }
 
 func (ohc OuterHeaderCreation) Serialize() ([]byte, error) {
-	b := []byte{ohc.OuterHeaderCreationDescription}
+	b := []byte{ohc.OuterHeaderCreationDescription, 0x00}
 	if ohc.OuterHeaderCreationDescription == 1 || ohc.OuterHeaderCreationDescription == 2 {
 		buf := make([]byte, 4)
 		binary.BigEndian.PutUint32(buf, ohc.TEID)
