@@ -16,6 +16,7 @@ var (
 	controlFunctionFeatures = []byte{0x00}
 	controlPlaneNodeID      []byte
 	cha                     chan []ie.UPIPResourceInformation
+	ftupCha                 chan bool
 )
 
 func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
@@ -24,7 +25,7 @@ func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
 	switch m.Header.MessageType {
 	case msg.HeartbeatRequestType:
 		pfcp, err := msg.FromPFCPMessage(m)
-		fmt.Printf("Type %T", pfcp)
+
 		if err != nil {
 			log.Printf("error in casting %v", err)
 			return
@@ -43,7 +44,6 @@ func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
 			b, _ := heartbeat.Serialize()
 			conn.WriteTo(b, peer)
 		}
-		log.Printf("error pfcpHeartBeat\n")
 
 	case msg.AssociationSetupRequestType:
 		b, err := ProcessAssociationSetupRequest(m)
@@ -90,22 +90,20 @@ func ProcessAssociationSetupRequest(m *msg.PFCPMessage) ([]byte, error) {
 	for _, informationElement := range pfcpAssociationSetupRequest.UserPlaneIPResourceInformation {
 		b, _ := informationElement.Serialize()
 		upIPResourceInformation := ie.NewUPIPResourceInformationFromByte(informationElement.Len(), b[4:])
-		/*
-			log.WithFields(log.Fields{"V4": upIPResourceInformation.V4,
-				"V6":              upIPResourceInformation.V6,
-				"TEIDRI":          upIPResourceInformation.TEIDRI,
-				"ASSONI":          upIPResourceInformation.ASSONI,
-				"ASSOSI":          upIPResourceInformation.ASSOSI,
-				"TEIDRange":       upIPResourceInformation.TEIDRange,
-				"IPv4Address":     upIPResourceInformation.IPv4Address,
-				"IPv6Address":     upIPResourceInformation.IPv6Address,
-				"NetworkInstance": upIPResourceInformation.NetworkInstance,
-				"SourceInterface": upIPResourceInformation.SourceInterface,
-			}).Info("Received UserPlaneIPResourceInformation")
-		*/
 		upIPRIs = append(upIPRIs, *upIPResourceInformation)
 	}
-	cha <- upIPRIs
+	if len(upIPRIs) > 0 {
+		cha <- upIPRIs
+	}
+	informationElement := pfcpAssociationSetupRequest.UPFunctionFeatures
+	b, _ := informationElement.Serialize()
+
+	upFunctionFeatures := ie.NewUPFunctionFeaturesFromByte(b[4:])
+	if upFunctionFeatures.FTUP {
+		if len(upIPRIs) == 0 {
+			ftupCha <- upFunctionFeatures.FTUP
+		}
+	}
 
 	n := ie.NewInformationElement(
 		ie.IENodeID,
@@ -142,13 +140,14 @@ func ProcessAssociationSetupRequest(m *msg.PFCPMessage) ([]byte, error) {
 	return ar.Serialize()
 }
 
-func Run(ipaddress string, udpport int, cpNID []byte, ch chan []ie.UPIPResourceInformation) {
+func Run(ipaddress string, udpport int, cpNID []byte, ch chan []ie.UPIPResourceInformation, ftupC chan bool) {
 	laddr := net.UDPAddr{
 		IP:   net.ParseIP(ipaddress),
 		Port: udpport,
 	}
 	controlPlaneNodeID = cpNID
 	cha = ch
+	ftupCha = ftupC
 	server := server.NewServer(laddr, handler)
 	defer server.Close()
 	if err := server.ActivateAndServe(); err != nil {

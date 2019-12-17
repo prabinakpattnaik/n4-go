@@ -96,3 +96,29 @@ func (u *UPFunctionFeatures) Serialize() ([]byte, error) {
 	b[1] = sByte
 	return b, nil
 }
+
+func NewUPFunctionFeaturesFromByte(data []byte) *UPFunctionFeatures {
+	if len(data) != 2 {
+		return nil
+	}
+
+	bu := (uint8(data[0]&0x01) == 1)
+	dd := (uint8(data[0]&0x02) == 2)
+	dl := (uint8(data[0]&0x04) == 4)
+	tr := (uint8(data[0]&0x08) == 8)
+	ft := (uint8(data[0]&0x10) == 16)
+	pf := (uint8(data[0]&0x20) == 32)
+	he := (uint8(data[0]&0x40) == 64)
+	treu := (uint8(data[0]&0x80) == 128)
+
+	em := (uint8(data[1]&0x01) == 1)
+	pd := (uint8(data[1]&0x02) == 2)
+	ud := (uint8(data[1]&0x04) == 4)
+	qu := (uint8(data[1]&0x08) == 8)
+	trace := (uint8(data[1]&0x10) == 16)
+	fr := (uint8(data[1]&0x20) == 32)
+	pfde := (uint8(data[1]&0x40) == 64)
+
+	return NewUPFunctionFeatures(bu, dd, dl, tr, ft, pf, he, treu, em, pd, ud, qu, trace, fr, pfde)
+
+}

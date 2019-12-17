@@ -55,25 +55,31 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 		dt.OctetString([]byte{sourceinterface}),
 	)
 
-	bb, err = fteid.Serialize()
-	if err != nil {
-		return nil, err
-	}
-	fteidIE := ie.NewInformationElement(
-		ie.IEFTEID,
-		0,
-		dt.OctetString(bb),
-	)
-	var networkInstance ie.InformationElement
-	if len(ni) > 0 {
-		networkInstance = ie.NewInformationElement(
-			ie.IENetworkInstance,
-			0,
-			dt.OctetString(ni),
-		)
-	}
+	var pdi *ie.PDI
 
-	pdi := ie.NewPDI(&si, &fteidIE, &networkInstance, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	if fteid != nil {
+		bb, err = fteid.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		fteidIE := ie.NewInformationElement(
+			ie.IEFTEID,
+			0,
+			dt.OctetString(bb),
+		)
+		var networkInstance ie.InformationElement
+		if len(ni) > 0 {
+			networkInstance = ie.NewInformationElement(
+				ie.IENetworkInstance,
+				0,
+				dt.OctetString(ni),
+			)
+		}
+
+		pdi = ie.NewPDI(&si, &fteidIE, &networkInstance, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	} else {
+		pdi = ie.NewPDI(&si, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	}
 	bb, err = pdi.Serialize()
 	if err != nil {
 		return nil, err

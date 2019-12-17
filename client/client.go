@@ -170,16 +170,27 @@ func run(c *cli.Context) error {
 	nodeIP := net.ParseIP(lIPv4address)
 	controlPlaneNodeID := []byte{0x0}
 	controlPlaneNodeID = append(controlPlaneNodeID, nodeIP.To4()...)
-	fmt.Printf("control plane NodeID [%x]\n", controlPlaneNodeID)
+
 	rIPv4address := c.String("remoteIP")
 	client := NewClient(rIPv4address, lIPv4address)
 	var upIPRI ie.UPIPResourceInformation
 	var upIPRIs []ie.UPIPResourceInformation
 	upIPRIC := make(chan []ie.UPIPResourceInformation)
+	ftupC := make(chan bool)
+	var ftup bool
 
 	if !c.Bool("clientInit") {
-		go server_wrap.Run(lIPv4address, udpport, controlPlaneNodeID, upIPRIC)
-		upIPRIs = <-upIPRIC
+		go server_wrap.Run(lIPv4address, udpport, controlPlaneNodeID, upIPRIC, ftupC)
+
+		select {
+		case upIPRIs = <-upIPRIC:
+
+		case ftup = <-ftupC:
+			fmt.Printf("ftup arrived!!")
+			break
+		}
+
+		fmt.Printf("Come out!!")
 		time.Sleep(20 * time.Second)
 
 	} else {
@@ -276,34 +287,34 @@ func run(c *cli.Context) error {
 		upIPRI = upIPRIs[0]
 	} else if l > 1 {
 		for _, u := range upIPRIs {
-			fmt.Printf("u.NetworkInstance [%x]\n", u.NetworkInstance)
-			fmt.Printf("Network Instance %s\n", NetworkInstance)
 			if string(u.NetworkInstance[1:]) == NetworkInstance {
 				upIPRI = u
 
 			}
 		}
-	} else {
-		return nil
 	}
 
-	log.WithFields(log.Fields{"V4": upIPRI.V4,
-		"V6":              upIPRI.V6,
-		"TEIDRI":          upIPRI.TEIDRI,
-		"ASSONI":          upIPRI.ASSONI,
-		"ASSOSI":          upIPRI.ASSOSI,
-		"TEIDRange":       upIPRI.TEIDRange,
-		"IPv4Address":     upIPRI.IPv4Address,
-		"IPv6Address":     upIPRI.IPv6Address,
-		"NetworkInstance": upIPRI.NetworkInstance,
-		"SourceInterface": upIPRI.SourceInterface,
-	}).Info("selected  UserPlaneIPResourceInformation for TEID allocation")
-	if upIPRI.TEIDRI > 0 {
-		//TODO
-		v := upIPRI.TEIDRange << (8 - upIPRI.TEIDRI)
-		teid = uint32(v) << 24
+	if l > 0 {
+		log.WithFields(log.Fields{"V4": upIPRI.V4,
+			"V6":              upIPRI.V6,
+			"TEIDRI":          upIPRI.TEIDRI,
+			"ASSONI":          upIPRI.ASSONI,
+			"ASSOSI":          upIPRI.ASSOSI,
+			"TEIDRange":       upIPRI.TEIDRange,
+			"IPv4Address":     upIPRI.IPv4Address,
+			"IPv6Address":     upIPRI.IPv6Address,
+			"NetworkInstance": upIPRI.NetworkInstance,
+			"SourceInterface": upIPRI.SourceInterface,
+		}).Info("selected  UserPlaneIPResourceInformation for TEID allocation")
+		if upIPRI.TEIDRI > 0 {
+			//TODO
+			v := upIPRI.TEIDRange << (8 - upIPRI.TEIDRI)
+			teid = uint32(v) << 24
 
+		}
 	}
+
+	fmt.Printf("session request made")
 
 	for i := 0; i < 10; i++ {
 		teid++
@@ -311,9 +322,16 @@ func run(c *cli.Context) error {
 		seid++
 		time.Sleep(2 * time.Second)
 
-		fteid, err := setting.Assign_tunnelID(upIPRI.IPv4Address, teid)
-		log.WithFields(log.Fields{"Ftied V4": upIPRI.IPv4Address}).Info("FTEID IPv4 address")
-		pfcpSessionEstablishmentRequest, err := session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, upIPRI.NetworkInstance)
+		var pfcpSessionEstablishmentRequest *msg.PFCPSessionEstablishmentRequest
+		var err error
+		if ftup {
+			fteid, _ := setting.Assign_tunnelID(nil, 0)
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, nil)
+		} else {
+			fteid, _ := setting.Assign_tunnelID(upIPRI.IPv4Address, teid)
+			log.WithFields(log.Fields{"Ftied V4": upIPRI.IPv4Address}).Info("FTEID IPv4 address")
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, upIPRI.NetworkInstance)
+		}
 		if err != nil {
 			log.WithError(err).Error("error in pfcpSessionEstablishmentRequest")
 			continue
@@ -346,7 +364,14 @@ func run(c *cli.Context) error {
 		srr := sessionEntity.Value(sn)
 		sequenceNumber++
 		if srr.SRequest != nil {
-			smr, err := session.ModifySession(srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access, upIPRI.NetworkInstance)
+			var smr *msg.PFCPSessionModificationRequest
+			var err error
+			if ftup {
+				smr, err = session.ModifySession(srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, 0, rIPAddress, uint8(ie.FORW), ie.Access, nil)
+			} else {
+				smr, err = session.ModifySession(srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access, upIPRI.NetworkInstance)
+			}
+
 			if err != nil {
 				log.WithError(err).Error("error in pfcpSessionModificationRequest")
 				continue
@@ -365,6 +390,7 @@ func run(c *cli.Context) error {
 			sn++
 		}
 	}
+
 	time.Sleep(7 * time.Second)
 
 	sn = uint32(101)
