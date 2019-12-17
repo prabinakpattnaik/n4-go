@@ -40,7 +40,7 @@ func NewUPIPResourceInformationFromByte(length uint16, input []byte) *UPIPResour
 
 	firstByte := input[0]
 	isV4 := (uint8(firstByte&0x01) == 1)
-	isV6 := (uint8(firstByte&0x02) == 1)
+	isV6 := (uint8(firstByte&0x02) == 2)
 	teidRi := (firstByte & 0x1C) >> 2
 	assoni := (uint8(firstByte&0x20) == 0x20)
 	assosi := (uint8(firstByte&0x40) == 0x40)
