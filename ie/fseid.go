@@ -45,3 +45,22 @@ func (f *FSEID) Serialize() ([]byte, error) {
 	b = append(b, ip...)
 	return b, nil
 }
+
+func NewFSEIDFromByte(data []byte) *FSEID {
+	v6 := (data[0]&0x01 == 1)
+	v4 := (data[0]&0x02 == 2)
+	seid := binary.BigEndian.Uint64(data[1:9])
+	var ip4address, ip6address net.IP
+	if v4 && v6 {
+
+		ip4address = data[9:12]
+		ip6address = data[13:]
+	} else if v4 {
+		ip4address = data[9:]
+	} else if v6 {
+		ip6address = data[9:]
+
+	}
+
+	return NewFSEID(v4, v6, seid, ip4address, ip6address)
+}

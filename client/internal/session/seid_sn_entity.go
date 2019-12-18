@@ -4,8 +4,15 @@ import (
 	"sync"
 )
 
+type SessionType int
+
+const (
+	SM SessionType = iota
+	SD
+)
+
 type SNCollection struct {
-	SESN uint32
+	//SESN uint32
 	SMSN uint32
 	SDSN uint32
 }
@@ -17,27 +24,23 @@ type SEIDSNEntity struct {
 }
 
 // Inc add value for the given key.
-func (s *SEIDSNEntity) Inc(key uint64, whichType uint8, sn uint32) {
+func (s *SEIDSNEntity) Inc(key uint64, st SessionType, sn uint32) {
 	s.mux.Lock()
 	// Lock so only one goroutine at a time can access the map s.m.
 	sncValueExist, exist := s.M[key]
 	if exist {
-		if whichType == 1 {
-			sncValueExist.SESN = sn
-		} else if whichType == 2 {
+		if st == SM {
 			sncValueExist.SMSN = sn
-		} else if whichType == 3 {
+		} else if st == SD {
 			sncValueExist.SMSN = sn
 		}
 
 		s.M[key] = sncValueExist
 	} else {
 		var snc SNCollection
-		if whichType == 1 {
-			snc.SESN = sn
-		} else if whichType == 2 {
+		if st == SM {
 			snc.SMSN = sn
-		} else if whichType == 3 {
+		} else if st == SD {
 			snc.SMSN = sn
 		}
 		s.M[key] = snc
