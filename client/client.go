@@ -31,6 +31,8 @@ var (
 	sessionEntity                     = session.SessionEntity{M: make(map[uint32]session.SessionRequestResponse)}
 	seidsnEntity                      = session.SEIDSNEntity{M: make(map[uint64]session.SNCollection)}
 	NetworkInstance                   = "epc"
+	seSEIDSN                          = session.SESEIDSNEntity{M: make(map[uint64]uint32)}
+	cpSEIDDPSEID                      = session.CPSEIDDPSEIDEntity{M: make(map[uint64]uint64)}
 )
 
 // Client implements a PFCP client
@@ -97,70 +99,85 @@ func (c *Client) Close() {
 func RecvProcess(c *Client) {
 	for {
 		rb, err := c.Read()
+
 		if err != nil {
 			log.WithError(err).Fatal("connection reading error")
 		}
-
-		pfcpMessage, err := msg.MessageFromBytes(rb)
-		if err != nil {
-			log.WithError(err).Info("Error in received pfcpMessage")
-		}
-		pfcp, err := msg.FromPFCPMessage(pfcpMessage)
-		if err != nil {
-			log.WithError(err).Info("error in FromPFCPMessage")
-		}
-
-		pfcpSessionEstablishmentResponse, ok := pfcp.(msg.PFCPSessionEstablishmentResponse)
-		if ok {
-			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionEstablishmentResponse")
-			sessionRequestResponse := session.SessionRequestResponse{
-				SResponse: &pfcpSessionEstablishmentResponse,
+		if len(rb) > 0 {
+			pfcpMessage, err := msg.MessageFromBytes(rb)
+			if err != nil {
+				log.WithError(err).Info("Error in received pfcpMessage")
 			}
-			sessionEntity.Inc(pfcpSessionEstablishmentResponse.Header.SequenceNumber, sessionRequestResponse)
-			continue
-
-		}
-		//pfcpSessionModificationResponse
-		pfcpSessionModificationResponse, ok := pfcp.(msg.PFCPSessionModificationResponse)
-		if ok {
-			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionModificationResponse")
-			sessionRequestResponse := session.SessionRequestResponse{
-				SResponse: &pfcpSessionModificationResponse,
+			pfcp, err := msg.FromPFCPMessage(pfcpMessage)
+			if err != nil {
+				log.WithError(err).Info("error in FromPFCPMessage")
 			}
-			sessionEntity.Inc(pfcpSessionModificationResponse.Header.SequenceNumber, sessionRequestResponse)
-			continue
-		}
 
-		//pfcpSessionModificationResponse
-		pfcpSessionDeletionResponse, ok := pfcp.(msg.PFCPSessionDeletionResponse)
-		if ok {
-			log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionDeletionResponse")
-			sessionRequestResponse := session.SessionRequestResponse{
-				SResponse: &pfcpSessionDeletionResponse,
+			pfcpSessionEstablishmentResponse, ok := pfcp.(msg.PFCPSessionEstablishmentResponse)
+			if ok {
+				log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionEstablishmentResponse")
+				sessionRequestResponse := session.SessionRequestResponse{
+					SResponse: &pfcpSessionEstablishmentResponse,
+				}
+				sessionEntity.Inc(pfcpSessionEstablishmentResponse.Header.SequenceNumber, sessionRequestResponse)
+				// success verification
+				if pfcpSessionEstablishmentResponse.UPFSEID != nil {
+					b, _ := pfcpSessionEstablishmentResponse.UPFSEID.Serialize()
+					fseid := ie.NewFSEIDFromByte(b[4:])
+					log.WithFields(log.Fields{"fseid v4": fseid.V4,
+						"fseid v4 address": fseid.IP4Address,
+						"fseid seid":       fseid.SEID,
+					}).Info("received DP FSEID")
+
+					cpSEIDDPSEID.Inc(pfcpSessionEstablishmentResponse.GetHeader().SessionEndpointIdentifier, fseid.SEID)
+
+				}
+
+				//SEID from client, new SEID to be used by client, upon assigned by DP.
+				continue
+
 			}
-			sessionEntity.Inc(pfcpSessionDeletionResponse.Header.SequenceNumber, sessionRequestResponse)
-			continue
+			//pfcpSessionModificationResponse
+			pfcpSessionModificationResponse, ok := pfcp.(msg.PFCPSessionModificationResponse)
+			if ok {
+				log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionModificationResponse")
+				sessionRequestResponse := session.SessionRequestResponse{
+					SResponse: &pfcpSessionModificationResponse,
+				}
+				sessionEntity.Inc(pfcpSessionModificationResponse.Header.SequenceNumber, sessionRequestResponse)
+				continue
+			}
+
+			//pfcpSessionModificationResponse
+			pfcpSessionDeletionResponse, ok := pfcp.(msg.PFCPSessionDeletionResponse)
+			if ok {
+				log.WithFields(log.Fields{"data": rb}).Info("received pfcpSessionDeletionResponse")
+				sessionRequestResponse := session.SessionRequestResponse{
+					SResponse: &pfcpSessionDeletionResponse,
+				}
+				sessionEntity.Inc(pfcpSessionDeletionResponse.Header.SequenceNumber, sessionRequestResponse)
+				continue
+			}
+
+			pfcpHeartbeat, ok := pfcp.(*msg.Heartbeat)
+			if ok {
+				log.WithFields(log.Fields{"data": rb}).Info("received PFCPHeartbeat Request")
+				r := ie.NewInformationElement(
+					ie.IERecoveryTimestamp,
+					0,
+					dt.Time(time.Now()),
+				)
+				h := pfcpHeartbeat.GetHeader()
+				h.MessageType = msg.HeartbeatResponseType
+				h.MessageLength = msg.PFCPBasicMessageSize + ie.IEBasicHeaderSize + r.Len()
+				heartbeat := msg.NewHeartbeat(h, &r)
+				b, _ := heartbeat.Serialize()
+				c.Write(b)
+				continue
+			}
+
+			log.WithFields(log.Fields{"data": rb}).Info("something went")
 		}
-
-		pfcpHeartbeat, ok := pfcp.(*msg.Heartbeat)
-		if ok {
-			log.WithFields(log.Fields{"data": rb}).Info("received PFCPHeartbeat Request")
-			r := ie.NewInformationElement(
-				ie.IERecoveryTimestamp,
-				0,
-				dt.Time(time.Now()),
-			)
-			h := pfcpHeartbeat.GetHeader()
-			h.MessageType = msg.HeartbeatResponseType
-			h.MessageLength = msg.PFCPBasicMessageSize + ie.IEBasicHeaderSize + r.Len()
-			heartbeat := msg.NewHeartbeat(h, &r)
-			b, _ := heartbeat.Serialize()
-			c.Write(b)
-			continue
-		}
-
-		log.WithFields(log.Fields{"data": rb}).Info("something went")
-
 	}
 
 }
@@ -186,27 +203,12 @@ func run(c *cli.Context) error {
 		case upIPRIs = <-upIPRIC:
 
 		case ftup = <-ftupC:
-			fmt.Printf("ftup arrived!!")
 			break
 		}
 
-		fmt.Printf("Come out!!")
 		time.Sleep(20 * time.Second)
 
 	} else {
-
-		go RecvProcess(client)
-
-		pfcpHeader := msg.NewPFCPHeader(1, false, false, msg.HeartbeatRequestType, 12, 0, sequenceNumber, 0)
-		i := ie.NewInformationElement(
-			ie.IERecoveryTimestamp,
-			0,
-			dt.Time(time.Now()),
-		)
-
-		heartbeat := msg.NewHeartbeat(pfcpHeader, &i)
-		bb, _ := heartbeat.Serialize()
-		client.Write(bb)
 
 		time.Sleep(2 * time.Second)
 		var length uint16
@@ -233,7 +235,7 @@ func run(c *cli.Context) error {
 		length = length + cp.Len() + ie.IEBasicHeaderSize
 
 		length = length + msg.PFCPBasicMessageSize
-		pfcpHeader = msg.NewPFCPHeader(1, false, false, msg.AssociationSetupRequestType, length, 0, sequenceNumber, 0)
+		pfcpHeader := msg.NewPFCPHeader(1, false, false, msg.AssociationSetupRequestType, length, 0, sequenceNumber, 0)
 
 		ar := msg.NewPFCPAssociationSetupRequest(pfcpHeader, &n, &r, nil, &cp, nil)
 		b, _ := ar.Serialize()
@@ -314,7 +316,7 @@ func run(c *cli.Context) error {
 		}
 	}
 
-	fmt.Printf("session request made")
+	go RecvProcess(client)
 
 	for i := 0; i < 10; i++ {
 		teid++
@@ -347,7 +349,7 @@ func run(c *cli.Context) error {
 			SRequest: pfcpSessionEstablishmentRequest,
 		}
 		sessionEntity.Inc(sequenceNumber, sessionRequestResponse)
-		seidsnEntity.Inc(seid, 1, sequenceNumber)
+		seSEIDSN.Inc(seid, sequenceNumber)
 		client.Write(b)
 
 	}
@@ -366,10 +368,11 @@ func run(c *cli.Context) error {
 		if srr.SRequest != nil {
 			var smr *msg.PFCPSessionModificationRequest
 			var err error
+			seid := cpSEIDDPSEID.Value(srr.SRequest.GetHeader().SessionEndpointIdentifier)
 			if ftup {
-				smr, err = session.ModifySession(srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, 0, rIPAddress, uint8(ie.FORW), ie.Access, nil)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, 0, rIPAddress, uint8(ie.FORW), ie.Access, nil)
 			} else {
-				smr, err = session.ModifySession(srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access, upIPRI.NetworkInstance)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access, upIPRI.NetworkInstance)
 			}
 
 			if err != nil {
@@ -398,7 +401,8 @@ func run(c *cli.Context) error {
 		srr := sessionEntity.Value(sn)
 		sequenceNumber++
 		if srr.SRequest != nil {
-			pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionDeletionRequestType, 12, srr.SRequest.GetHeader().SessionEndpointIdentifier, sequenceNumber, 0)
+			seid := cpSEIDDPSEID.Value(srr.SRequest.GetHeader().SessionEndpointIdentifier)
+			pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionDeletionRequestType, 12, seid, sequenceNumber, 0)
 			b := pfcpHeader.Serialize()
 			client.Write(b)
 			log.WithFields(log.Fields{"data": b}).Info("received pfcpSessionDeletionRequest")

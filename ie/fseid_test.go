@@ -25,3 +25,16 @@ func TestNewFSEID(t *testing.T) {
 
 	t.Log(fseid)
 }
+
+func TestNewFSEIDFromBytes(t *testing.T) {
+	b := []byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xac, 0x11, 0x00, 0x05}
+	fseid := NewFSEIDFromByte(b)
+	ipaddress := []byte{0xac, 0x11, 0x00, 0x05}
+	if fseid.SEID != 2 {
+		t.Fatalf("wrong SEID %d", fseid.SEID)
+	}
+	if !bytes.Equal(fseid.IP4Address, ipaddress) {
+		t.Fatalf("unexpected value of FSEID IPV4 address. want [%x}, have [%x]", ipaddress, fseid.IP4Address)
+	}
+
+}
