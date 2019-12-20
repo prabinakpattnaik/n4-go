@@ -6,11 +6,13 @@ import (
 	"os"
 	"time"
 
+	"bitbucket.org/sothy5/n4-go/ie/urr"
 	"bitbucket.org/sothy5/n4-go/msg"
 
 	setting "bitbucket.org/sothy5/n4-go/client/internal/helper"
 	"bitbucket.org/sothy5/n4-go/client/internal/server_wrap"
 	"bitbucket.org/sothy5/n4-go/client/internal/session"
+	"bitbucket.org/sothy5/n4-go/client/internal/usage_report"
 	"bitbucket.org/sothy5/n4-go/ie"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 	log "github.com/sirupsen/logrus"
@@ -128,7 +130,7 @@ func RecvProcess(c *Client) {
 						"fseid v4 address": fseid.IP4Address,
 						"fseid seid":       fseid.SEID,
 					}).Info("received DP FSEID")
-
+					//SessionEstablishment Request and Response have SEID
 					cpSEIDDPSEID.Inc(pfcpSessionEstablishmentResponse.GetHeader().SessionEndpointIdentifier, fseid.SEID)
 
 				}
@@ -326,13 +328,20 @@ func run(c *cli.Context) error {
 
 		var pfcpSessionEstablishmentRequest *msg.PFCPSessionEstablishmentRequest
 		var err error
+
+		m := urr.NewMeasurementMethod(true, false, false)
+		r := urr.NewReportingTriggers(false, false, true, false, false, false, false, false, false, false, false, false, false, false)
+		//3600*10s for Time Threshold
+		createURR, err := usage_report.NewCreateURR(1, m, r, 0, 36000)
+
 		if ftup {
 			fteid, _ := setting.Assign_tunnelID(nil, 0)
-			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, nil)
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, nil, createURR, 1)
 		} else {
 			fteid, _ := setting.Assign_tunnelID(upIPRI.IPv4Address, teid)
 			log.WithFields(log.Fields{"Ftied V4": upIPRI.IPv4Address}).Info("FTEID IPv4 address")
-			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, upIPRI.NetworkInstance)
+
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, upIPRI.NetworkInstance, createURR, 1)
 		}
 		if err != nil {
 			log.WithError(err).Error("error in pfcpSessionEstablishmentRequest")
@@ -369,6 +378,10 @@ func run(c *cli.Context) error {
 			var smr *msg.PFCPSessionModificationRequest
 			var err error
 			seid := cpSEIDDPSEID.Value(srr.SRequest.GetHeader().SessionEndpointIdentifier)
+			if seid == 0 {
+				seid = srr.SRequest.GetHeader().SessionEndpointIdentifier
+			}
+
 			if ftup {
 				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, 0, rIPAddress, uint8(ie.FORW), ie.Access, nil)
 			} else {
@@ -402,6 +415,10 @@ func run(c *cli.Context) error {
 		sequenceNumber++
 		if srr.SRequest != nil {
 			seid := cpSEIDDPSEID.Value(srr.SRequest.GetHeader().SessionEndpointIdentifier)
+			if seid == 0 {
+				fmt.Printf("SEID before delete %d\n", srr.SRequest.GetHeader().SessionEndpointIdentifier)
+				seid = srr.SRequest.GetHeader().SessionEndpointIdentifier
+			}
 			pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionDeletionRequestType, 12, seid, sequenceNumber, 0)
 			b := pfcpHeader.Serialize()
 			client.Write(b)
