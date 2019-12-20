@@ -56,6 +56,7 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 	}
 
 	dataLength := sr.Len()
+	fmt.Printf("dataLength %d\n", dataLength)
 
 	output := make([]byte, dataLength)
 	pfcpend := uint16(PFCPBasicHeaderLength) + PFCPMessageSize
@@ -71,12 +72,18 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 
 	createpdr, _ := sr.CreatePDR.Serialize()
 	createpdrEnd := seidEnd + ie.IEBasicHeaderSize + sr.CreatePDR.Len()
-
 	copy(output[seidEnd:createpdrEnd], createpdr)
 
 	createfar, _ := sr.CreateFAR.Serialize()
 	createfarEnd := createpdrEnd + ie.IEBasicHeaderSize + sr.CreateFAR.Len()
 	copy(output[createpdrEnd:createfarEnd], createfar)
+
+	if sr.CreateURR != nil {
+		createURR, _ := sr.CreateURR.Serialize()
+		createUrrEnd := createfarEnd + ie.IEBasicHeaderSize + sr.CreateURR.Len()
+		copy(output[createfarEnd:createUrrEnd], createURR)
+
+	}
 
 	return output, nil
 
@@ -143,7 +150,7 @@ func ProcessPFCPSessionEstablishmentRequest(m *PFCPMessage, nodeIP net.IP, seid 
 	)
 	length = length + ie.IEBasicHeaderSize + createdPDRIE.Len()
 
-	pfcpHeader := NewPFCPHeader(1, false, true, SessionEstablishmentResponseType, length+12, seid, pfcpSessionEstablishmentRequest.Header.SequenceNumber, 0)
+	pfcpHeader := NewPFCPHeader(1, false, true, SessionEstablishmentResponseType, length+12, pfcpSessionEstablishmentRequest.Header.SessionEndpointIdentifier, pfcpSessionEstablishmentRequest.Header.SequenceNumber, 0)
 	pfcpSessionEstablishmentResponse := NewPFCPSessionEstablishmentResponse(pfcpHeader, &n, &c, nil, &upfseid, &createdPDRIE, nil, nil, nil, nil)
 	b, err = pfcpSessionEstablishmentResponse.Serialize()
 	if err != nil {
