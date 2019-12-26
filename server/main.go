@@ -42,9 +42,8 @@ func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
 		seid = seid + 1
 
 	case msg.SessionModificationRequestType:
-		sSEID := seidEntity.Value(m.Header.SessionEndpointIdentifier)
+		sSEID := m.Header.SessionEndpointIdentifier
 		if sSEID > 0 {
-
 			b, err := msg.ProcessPFCPSessionModificationRequest(m, sSEID)
 			if err == nil {
 				if _, err := conn.WriteTo(b, peer); err != nil {
@@ -56,7 +55,7 @@ func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
 			log.Printf("Not valid SEID in PFCPMessage: %+v\n", m)
 		}
 	case msg.SessionDeletionRequestType:
-		sSEID := seidEntity.Value(m.Header.SessionEndpointIdentifier)
+		sSEID := m.Header.SessionEndpointIdentifier
 		if sSEID > 0 {
 
 			b, err := msg.ProcessPFCPSessionDeletionRequest(m, sSEID)
