@@ -128,8 +128,8 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 		0,
 		dt.Unsigned32(qerid),
 	)
-
 	createPDR := ie.NewCreatePDR(&pdrIDIE, &precedenceIE, &pdiIE, &outerHeaderRemovalIE, &farIDIE, &urrIDIE, &qerIDIE, nil)
+
 	bb, err = createPDR.Serialize()
 	if err != nil {
 		return nil, err

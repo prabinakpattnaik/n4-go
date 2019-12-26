@@ -75,13 +75,12 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 	createfar, _ := sr.CreateFAR.Serialize()
 	createfarEnd := createpdrEnd + ie.IEBasicHeaderSize + sr.CreateFAR.Len()
 	copy(output[createpdrEnd:createfarEnd], createfar)
-	var createUrrEnd uint16
+	createUrrEnd := createfarEnd
 
 	if sr.CreateURR != nil {
 		createURR, _ := sr.CreateURR.Serialize()
-		createUrrEnd = createfarEnd + ie.IEBasicHeaderSize + sr.CreateURR.Len()
+		createUrrEnd += ie.IEBasicHeaderSize + sr.CreateURR.Len()
 		copy(output[createfarEnd:createUrrEnd], createURR)
-
 	}
 
 	if sr.CreateQER != nil {
@@ -90,7 +89,6 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 		copy(output[createUrrEnd:createQEREnd], createQER)
 	}
 	return output, nil
-
 	//TODO: remaining to be added
 
 }
