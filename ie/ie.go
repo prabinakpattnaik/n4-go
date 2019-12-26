@@ -131,6 +131,8 @@ const (
 
 	IEFailedRuleID                   IEType = 114
 	IEUserPlaneIPResourceInformation IEType = 116
+	IERQI                            IEType = 123
+	IEQFI                            IEType = 124
 
 	IERemoveTrafficEndpoint IEType = 130
 )
