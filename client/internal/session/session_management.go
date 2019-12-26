@@ -20,7 +20,7 @@ func ProcessPFCPSessionEstablishmentResponse(m *msg.PFCPMessage) ([]byte, error)
 	return nil, nil
 }
 
-func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint16, farid uint32, sourceinterface uint8, fteid *ie.FTEID, aa, destionationinterface uint8, ni []byte) (*msg.PFCPSessionEstablishmentRequest, error) {
+func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint16, farid uint32, sourceinterface uint8, fteid *ie.FTEID, aa, destionationinterface uint8, ni []byte, c *ie.InformationElement, urrid uint32) (*msg.PFCPSessionEstablishmentRequest, error) {
 	//TODO nodeIP is IPv4 address.
 	// Need to change when accomadating FQDN
 	// SN incremental (request and response has same value)
@@ -117,7 +117,13 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 		dt.Unsigned32(farid),
 	)
 
-	createPDR := ie.NewCreatePDR(&pdrIDIE, &precedenceIE, &pdiIE, &outerHeaderRemovalIE, &farIDIE, nil, nil, nil)
+	urrIDIE := ie.NewInformationElement(
+		ie.IEURRID,
+		0,
+		dt.Unsigned32(urrid),
+	)
+
+	createPDR := ie.NewCreatePDR(&pdrIDIE, &precedenceIE, &pdiIE, &outerHeaderRemovalIE, &farIDIE, &urrIDIE, nil, nil)
 	bb, err = createPDR.Serialize()
 	if err != nil {
 		return nil, err
@@ -166,9 +172,10 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 		dt.OctetString(bb),
 	)
 	length = length + ie.IEBasicHeaderSize + createFARIE.Len()
+	length += ie.IEBasicHeaderSize + c.Len()
 
 	pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionEstablishmentRequestType, length+12, sei, sn, 0)
-	pfcpSessionEstablishmentRequest := msg.NewPFCPSessionEstablishmentRequest(pfcpHeader, &nodeIDIE, &cpfseidIE, &createPDRIE, &createFARIE, nil, nil, nil, nil, nil, nil, nil, nil)
+	pfcpSessionEstablishmentRequest := msg.NewPFCPSessionEstablishmentRequest(pfcpHeader, &nodeIDIE, &cpfseidIE, &createPDRIE, &createFARIE, c, nil, nil, nil, nil, nil, nil, nil)
 
 	return &pfcpSessionEstablishmentRequest, nil
 
