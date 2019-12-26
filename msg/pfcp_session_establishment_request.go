@@ -56,8 +56,6 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 	}
 
 	dataLength := sr.Len()
-	fmt.Printf("dataLength %d\n", dataLength)
-
 	output := make([]byte, dataLength)
 	pfcpend := uint16(PFCPBasicHeaderLength) + PFCPMessageSize
 	copy(output[:pfcpend], sr.Header.Serialize())
