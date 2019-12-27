@@ -76,7 +76,7 @@ func (s *Server) ActivateAndServe() error {
 		log.Printf("Handling request from %v", peer)
 		m, err := msg.MessageFromBytes(rbuf[:n])
 		if err != nil {
-			log.Printf("Error parsing DHCPv4 request: %v", err)
+			log.Printf("Error parsing PFCP request: %v", err)
 			continue
 		}
 		go s.Handler(pc, peer, m)
