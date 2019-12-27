@@ -134,7 +134,8 @@ const (
 	IERQI                            IEType = 123
 	IEQFI                            IEType = 124
 
-	IERemoveTrafficEndpoint IEType = 130
+	IERemoveTrafficEndpoint          IEType = 130
+	IESuggestedBufferingPacketsCount IEType = 140
 )
 
 //Informatin Element is a Type, length,value group
