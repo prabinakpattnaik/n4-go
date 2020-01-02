@@ -1,0 +1,38 @@
+syntax = "proto3";
+package v1;
+
+enum RequestType {
+     REQUEST_TYPE_INITIAL =0;
+     REQUEST_TYPE_EXISTING=1;
+     REQUEST_TYPE_HANDOVER=3;
+     REQUEST_TYPE_EMERGENCY=4;
+}
+
+message CNTunnelInfo{
+    int32            tunnelId=1;
+    string           ipv4address=2;
+}
+
+message SessionEstablishmentRequest{
+    string         supi=1;
+    int64            pduSessionId=2;
+    string         dnn=3;
+    RequestType    requestType=4;
+    string         directionType=5;
+}
+
+message SessionEstablishmentResponse{
+    string         supi=1;
+    CNTunnelInfo   cnTunnelInfo=2;
+}
+
+message SessionUpdateRequest {
+    string supi=1;
+    string dnn=2;
+    string smcontext_id=3;
+}
+
+service SessionEstablishmentService {
+    rpc Create(SessionEstablishmentRequest) returns (SessionEstablishmentResponse);
+}
+
