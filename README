@@ -65,12 +65,10 @@ All necesarry IEs listed in ie.go file and needed to be implemented by order.
 - PFD-Management-Response
 - Node-Report-Request
 - Node-Report-Response
-
-- Length of PFCP messages are not calculated by Len(). In stead, it returns sum of length value and header size. Better, it should be calculated itself.    
-
+ 
 ## Missing Features
 
-N4 supports many features. Initial PoC considers only PFCP association setup and session establishment.The following features are considered for later release. 
+N4 supports many features. Initial PoC considers only PFCP association setup and session establishment/modification/deletation.The following features are considered for the future release. 
 
 - support of load/overload control
 - Ethernet PDU session
