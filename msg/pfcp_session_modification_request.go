@@ -38,9 +38,7 @@ type PFCPSessionModificationRequest struct {
 
 //NewPFCPSessionModificationRequest creates new PFCPSessionMondificationRequst
 func NewPFCPSessionModificationRequest(h *PFCPHeader, cpfseid, rPDR, rFAR, rURR, rQER, rBAR, rTE, cPDR, cFAR, cURR, cQER, cBAR, cTE, uPDR, uFAR, uURR, uQER, uBAR, uTE, pfcpSMReqFlags, qURR, userPIT, qURRReference, traceInformation *ie.InformationElement) PFCPSessionModificationRequest {
-
 	return PFCPSessionModificationRequest{
-
 		Header:                   h,
 		CPFSEID:                  cpfseid,
 		RemovePDR:                rPDR,
@@ -209,7 +207,7 @@ func ProcessPFCPSessionModificationRequest(m *PFCPMessage, sSEID uint64) ([]byte
 	)
 	length := ie.IEBasicHeaderSize + c.Len()
 	//how to select SEID from sending side.
-	pfcpHeader := NewPFCPHeader(1, false, true, SessionModificationResponseType, length+12, sSEID, pfcpSessionModificationRequest.Header.SequenceNumber, 0)
+	pfcpHeader := NewPFCPHeader(1, false, true, SessionModificationResponseType, length, sSEID, pfcpSessionModificationRequest.Header.SequenceNumber, 0)
 	pfcpSessionModificationResponse := NewPFCPSessionModificationResponse(pfcpHeader, &c, nil, nil)
 	b, err := pfcpSessionModificationResponse.Serialize()
 	if err != nil {

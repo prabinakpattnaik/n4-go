@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"bitbucket.org/sothy5/n4-go/ie/bar"
+	"bitbucket.org/sothy5/n4-go/ie/qer"
 	"bitbucket.org/sothy5/n4-go/ie/urr"
 	"bitbucket.org/sothy5/n4-go/msg"
 
@@ -328,20 +330,32 @@ func run(c *cli.Context) error {
 
 		var pfcpSessionEstablishmentRequest *msg.PFCPSessionEstablishmentRequest
 		var err error
-
+		// Time Threshold based URR is created.
 		m := urr.NewMeasurementMethod(true, false, false)
 		r := urr.NewReportingTriggers(false, false, true, false, false, false, false, false, false, false, false, false, false, false)
 		//3600*10s for Time Threshold
 		createURR, err := usage_report.NewCreateURR(1, m, r, 0, 36000)
 
+		//QER
+		gateStatus := qer.NewGateStatus(qer.OPEN, qer.CLOSED)
+		mbr := qer.NewBR(1024, 0)
+		gbr := qer.NewBR(512, 0)
+		qfi := uint8(4)
+		rqi := true
+		createQER, err := qer.NewCreateQER(1, 0, gateStatus, mbr, gbr, qfi, rqi)
+		if err != nil {
+			log.WithError(err).Error("error in creating CreateQER")
+			continue
+		}
+
 		if ftup {
 			fteid, _ := setting.Assign_tunnelID(nil, 0)
-			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, nil, createURR, 1)
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, nil, createURR, 1, createQER, 1)
 		} else {
 			fteid, _ := setting.Assign_tunnelID(upIPRI.IPv4Address, teid)
 			log.WithFields(log.Fields{"Ftied V4": upIPRI.IPv4Address}).Info("FTEID IPv4 address")
 
-			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, upIPRI.NetworkInstance, createURR, 1)
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, upIPRI.NetworkInstance, createURR, 1, createQER, 1)
 		}
 		if err != nil {
 			log.WithError(err).Error("error in pfcpSessionEstablishmentRequest")
@@ -382,10 +396,18 @@ func run(c *cli.Context) error {
 				seid = srr.SRequest.GetHeader().SessionEndpointIdentifier
 			}
 
+			// Forward ->Buffering
+			barId := 1
+			var pcv bar.PacketCountvalue = 100
+			createBAR, err := bar.NewCreateBAR(uint8(barId), pcv)
+			if err != nil {
+				log.WithError(err).Error("error in CreateBAR")
+				continue
+			}
 			if ftup {
-				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, 0, rIPAddress, uint8(ie.FORW), ie.Access, nil)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, 0, rIPAddress, ie.BUFF, ie.Access, nil, createBAR)
 			} else {
-				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access, upIPRI.NetworkInstance)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, ie.BUFF, ie.Access, upIPRI.NetworkInstance, createBAR)
 			}
 
 			if err != nil {
