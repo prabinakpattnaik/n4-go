@@ -36,8 +36,11 @@ func NewCreateBAR(barid uint8, pcv PacketCountvalue) (*CreateBAR, error) {
 }
 
 func (c *CreateBAR) Serialize() ([]byte, error) {
-	if c.BARID == nil || c.BARID.Type == ie.IEReserved {
-		return nil, fmt.Errorf("No valid BARID")
+	if c.BARID == nil {
+		return nil, fmt.Errorf("BARID is nil")
+	}
+	if c.BARID.Type == ie.IEReserved {
+		return nil, fmt.Errorf("BARID does not have valid Type")
 	}
 	b, err := c.BARID.Serialize()
 	if err != nil {
