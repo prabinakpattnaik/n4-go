@@ -1,13 +1,14 @@
 package session
 
 import (
+	"fmt"
 	"net"
-
-	"bitbucket.org/sothy5/n4-go/ie/qer"
 
 	"encoding/binary"
 
 	"bitbucket.org/sothy5/n4-go/ie"
+	"bitbucket.org/sothy5/n4-go/ie/bar"
+	"bitbucket.org/sothy5/n4-go/ie/qer"
 	"bitbucket.org/sothy5/n4-go/msg"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
@@ -198,7 +199,7 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 
 }
 
-func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinterface ie.InterfaceValue, ueipAddress net.IP, teid uint32, remoteIP net.IP, aa uint8, dInterface ie.InterfaceValue, ni []byte) (*msg.PFCPSessionModificationRequest, error) {
+func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinterface ie.InterfaceValue, ueipAddress net.IP, teid uint32, remoteIP net.IP, aa ie.ApplyActionValue, dInterface ie.InterfaceValue, ni []byte, createBAR *bar.CreateBAR) (*msg.PFCPSessionModificationRequest, error) {
 	d := make([]byte, 2)
 	binary.BigEndian.PutUint16(d, pdrid)
 	pdrIDIE := ie.NewInformationElement(
@@ -270,11 +271,27 @@ func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinte
 		dt.OctetString(b),
 	)
 	length := ie.IEBasicHeaderSize + createPDRIE.Len()
+	var aaValue uint8
+	switch aa {
+
+	case ie.DROP:
+		aaValue = 1
+	case ie.FORW:
+		aaValue = 2
+	case ie.BUFF:
+		aaValue = 4
+	case ie.NOCP:
+		aaValue = 8
+	case ie.DUPL:
+		aaValue = 16
+	default:
+		return nil, fmt.Errorf("Not valid Apply Action")
+	}
 
 	aaIE := ie.NewInformationElement(
 		ie.IEApplyAction,
 		0,
-		dt.OctetString([]byte{aa}),
+		dt.OctetString(byte(aaValue)),
 	)
 
 	desIE := ie.NewInformationElement(
@@ -282,33 +299,38 @@ func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinte
 		0,
 		dt.OctetString(byte(dInterface)),
 	)
+	var createFAR *ie.CreateFAR
+	if aa == ie.FORW {
+		ohcd := uint8(1)
+		ohc := ie.NewOuterHeaderCreation(ohcd, teid, ueipAddress, nil, 0)
+		b, err = ohc.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		ohcIE := ie.NewInformationElement(
+			ie.IEOuterHeaderCreation,
+			0,
+			dt.OctetString(b),
+		)
+		fp := ie.NewForwardingParameters(&desIE, nil, nil, &ohcIE, nil, nil, nil, nil, nil)
+		bb, err = fp.Serialize()
+		if err != nil {
+			return nil, err
+		}
 
-	ohcd := uint8(1)
-	ohc := ie.NewOuterHeaderCreation(ohcd, teid, ueipAddress, nil, 0)
-	b, err = ohc.Serialize()
-	if err != nil {
-		return nil, err
+		fpIE := ie.NewInformationElement(
+			ie.IEForwardingParameters,
+			0,
+			dt.OctetString(bb),
+		)
+
+		createFAR = ie.NewCreateFAR(&farIDIE, &aaIE, &fpIE, nil, nil)
+
+	} else if aa == ie.BUFF {
+		createFAR = ie.NewCreateFAR(&farIDIE, &aaIE, nil, nil, createBAR.BARID)
+
 	}
 
-	ohcIE := ie.NewInformationElement(
-		ie.IEOuterHeaderCreation,
-		0,
-		dt.OctetString(b),
-	)
-
-	fp := ie.NewForwardingParameters(&desIE, nil, nil, &ohcIE, nil, nil, nil, nil, nil)
-	bb, err = fp.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	fpIE := ie.NewInformationElement(
-		ie.IEForwardingParameters,
-		0,
-		dt.OctetString(bb),
-	)
-
-	createFAR := ie.NewCreateFAR(&farIDIE, &aaIE, &fpIE, nil, nil)
 	bCreateFAR, err := createFAR.Serialize()
 	if err != nil {
 		return nil, err
@@ -316,15 +338,31 @@ func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinte
 	}
 
 	createFARIE := ie.NewInformationElement(
-		ie.IECreateFAR, //IEcode
-		0,              //EntrepriseID
+		ie.IECreateFAR,
+		0,
 		dt.OctetString(bCreateFAR),
 	)
 	length = length + ie.IEBasicHeaderSize + createFARIE.Len()
-	pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionModificationRequestType, length+12, sei, sn, 0)
+	var smr msg.PFCPSessionModificationRequest
+	if aa == ie.FORW {
+		pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionModificationRequestType, length+12, sei, sn, 0)
+		smr = msg.NewPFCPSessionModificationRequest(pfcpHeader, nil, nil, nil, nil, nil, nil, nil, &createPDRIE, &createFARIE, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	} else if aa == ie.BUFF {
+		bcreateBAR, err := createBAR.Serialize()
+		if err != nil {
+			return nil, err
 
-	smr := msg.NewPFCPSessionModificationRequest(pfcpHeader, nil, nil, nil, nil, nil, nil, nil, &createPDRIE, &createFARIE, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-
+		}
+		fmt.Printf("[%x]\n", bcreateBAR)
+		createBARIE := ie.NewInformationElement(
+			ie.IECreateBAR,
+			0,
+			dt.OctetString(bcreateBAR),
+		)
+		length = length + ie.IEBasicHeaderSize + createBARIE.Len()
+		pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionModificationRequestType, length+12, sei, sn, 0)
+		smr = msg.NewPFCPSessionModificationRequest(pfcpHeader, nil, nil, nil, nil, nil, nil, nil, &createPDRIE, &createFARIE, nil, nil, &createBARIE, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	}
 	return &smr, nil
 
 }

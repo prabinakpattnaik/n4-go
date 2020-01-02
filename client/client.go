@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"bitbucket.org/sothy5/n4-go/ie/bar"
 	"bitbucket.org/sothy5/n4-go/ie/qer"
 	"bitbucket.org/sothy5/n4-go/ie/urr"
 	"bitbucket.org/sothy5/n4-go/msg"
@@ -395,10 +396,18 @@ func run(c *cli.Context) error {
 				seid = srr.SRequest.GetHeader().SessionEndpointIdentifier
 			}
 
+			// Forward ->Buffering
+			barId := 1
+			var pcv bar.PacketCountvalue = 100
+			createBAR, err := bar.NewCreateBAR(uint8(barId), pcv)
+			if err != nil {
+				log.WithError(err).Error("error in CreateBAR")
+				continue
+			}
 			if ftup {
-				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, 0, rIPAddress, uint8(ie.FORW), ie.Access, nil)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, 0, rIPAddress, ie.BUFF, ie.Access, nil, createBAR)
 			} else {
-				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, uint8(ie.FORW), ie.Access, upIPRI.NetworkInstance)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, ie.BUFF, ie.Access, upIPRI.NetworkInstance, createBAR)
 			}
 
 			if err != nil {

@@ -19,6 +19,10 @@ N4 protocol has defined many Information Elements (IE) which will be included in
 - Create FAR
 - Forwarding Parameters
 - Outer Header Creation
+- Create URR
+- Create QER
+- Create BAR
+- Apply Action
 
 
 
@@ -29,16 +33,17 @@ PFCP message header is created and tested.
 - Heartbeat-Response
 - Association-Setup-Request
 - Association-Setup-Response
-- Session-Establishment-Request
+- Session-Establishment-Request: which includes Create PDR, Create FAR (forwarding Action), Create URR(Time Threshold),and CreateQER.
 - Session-Establishment-Response
-- Session-Modification-Request
+- Session-Modification-Request: which includes Create PDR, Create FAR(buffering action), Create BAR
 - Session-Modification-Response
 - Session-Deletion-Request
 - Session-Deleteion-Respone
+- Session-Report-Request
+- Session-Report-Response
 
 ## Call Flow
 SMF entity bahaves as client entity and UPF behaves as server. The client should make an association setup request and get association setup response(see section 6.2.6.2). In the association setup response, UP can provide IP resources. Then, client sends session estblishment request and gets a response.
-
 By default, TEID allocation/release is mandatory for the control plane. Therefore, FTUP bit in UP Function Features should not be set.
 In this case, TEID allocation/release is not managed by the data plane.
 
@@ -56,11 +61,8 @@ All necesarry IEs listed in ie.go file and needed to be implemented by order.
 - Association-Update-Response
 - Association-Release-Request
 - Association-Release-Response
-- Session-Report-Request
-- Session-Report-Response
 - PFD-Management-Request
 - PFD-Management-Response
-- Version-Not-Supported
 - Node-Report-Request
 - Node-Report-Response
 
@@ -94,10 +96,10 @@ sudo ./server
 ``` 
 
 ```
-sudo ./client
+sudo /client --localIP="127.0.0.1" --remoteIP="127.0.0.1" --clientInit=true
 ```
 
-When running client, you will see validation of sequence number of session establishment  request and response. 
+When running client, you will see log of PFCP session establishment/modification/deletion request and response. 
 
 
 
