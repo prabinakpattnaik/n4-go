@@ -10,6 +10,7 @@ import (
 	"bitbucket.org/sothy5/n4-go/ie/qer"
 	"bitbucket.org/sothy5/n4-go/ie/urr"
 	"bitbucket.org/sothy5/n4-go/msg"
+	"bitbucket.org/sothy5/n4-go/util/se"
 
 	setting "bitbucket.org/sothy5/n4-go/client/internal/helper"
 	"bitbucket.org/sothy5/n4-go/client/internal/server_wrap"
@@ -36,7 +37,7 @@ var (
 	seidsnEntity                      = session.SEIDSNEntity{M: make(map[uint64]session.SNCollection)}
 	NetworkInstance                   = "epc"
 	seSEIDSN                          = session.SESEIDSNEntity{M: make(map[uint64]uint32)}
-	cpSEIDDPSEID                      = session.CPSEIDDPSEIDEntity{M: make(map[uint64]uint64)}
+	cpSEIDDPSEID                      = &se.CPSEIDDPSEIDEntity{M: make(map[uint64]uint64)}
 )
 
 // Client implements a PFCP client
@@ -201,7 +202,7 @@ func run(c *cli.Context) error {
 	var ftup bool
 
 	if !c.Bool("clientInit") {
-		go server_wrap.Run(lIPv4address, udpport, controlPlaneNodeID, upIPRIC, ftupC)
+		go server_wrap.Run(lIPv4address, udpport, controlPlaneNodeID, upIPRIC, ftupC, cpSEIDDPSEID)
 
 		select {
 		case upIPRIs = <-upIPRIC:

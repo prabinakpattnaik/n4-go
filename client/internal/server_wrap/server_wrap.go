@@ -8,6 +8,7 @@ import (
 
 	"bitbucket.org/sothy5/n4-go/ie"
 	"bitbucket.org/sothy5/n4-go/msg"
+	"bitbucket.org/sothy5/n4-go/util/se"
 	"bitbucket.org/sothy5/n4-go/util/server"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
@@ -17,6 +18,7 @@ var (
 	controlPlaneNodeID      []byte
 	cha                     chan []ie.UPIPResourceInformation
 	ftupCha                 chan bool
+	cpSEIDDPSEID            = &se.CPSEIDDPSEIDEntity{M: make(map[uint64]uint64)}
 )
 
 func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
@@ -52,6 +54,8 @@ func handler(conn net.PacketConn, peer net.Addr, m *msg.PFCPMessage) {
 				log.Printf("Cannot send Message Type {%d} to client: %v", msg.AssociationSetupResponseType, err)
 			}
 		}
+	case msg.SessionReportRequestType:
+
 	case msg.SessionEstablishmentRequestType:
 		log.Print("Not handled  SessionEstablishmentRequestType")
 
@@ -140,11 +144,12 @@ func ProcessAssociationSetupRequest(m *msg.PFCPMessage) ([]byte, error) {
 	return ar.Serialize()
 }
 
-func Run(ipaddress string, udpport int, cpNID []byte, ch chan []ie.UPIPResourceInformation, ftupC chan bool) {
+func Run(ipaddress string, udpport int, cpNID []byte, ch chan []ie.UPIPResourceInformation, ftupC chan bool, cPSEIDDPSEID *se.CPSEIDDPSEIDEntity) {
 	laddr := net.UDPAddr{
 		IP:   net.ParseIP(ipaddress),
 		Port: udpport,
 	}
+	cpSEIDDPSEID = cPSEIDDPSEID
 	controlPlaneNodeID = cpNID
 	cha = ch
 	ftupCha = ftupC
