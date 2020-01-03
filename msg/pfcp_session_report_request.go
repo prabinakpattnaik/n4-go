@@ -1,7 +1,12 @@
 package msg
 
 import (
+	"fmt"
+
 	"bitbucket.org/sothy5/n4-go/ie"
+	"bitbucket.org/sothy5/n4-go/ie/sr"
+	"bitbucket.org/sothy5/n4-go/util/se"
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
 //PFCPSessionReportRequest
@@ -63,4 +68,140 @@ func (sr PFCPSessionReportRequest) Type() PFCPType {
 
 func (sr PFCPSessionReportRequest) GetHeader() *PFCPHeader {
 	return sr.Header
+}
+func ProcessPFCPSessionReportRequest(m *PFCPMessage, cpSEIDDPSEID *se.CPSEIDDPSEIDEntity) ([]byte, error) {
+	pfcpMessage, err := FromPFCPMessage(m)
+	if err != nil {
+		fmt.Printf("pfcpSessionER:Header %+v\n", pfcpMessage)
+		return nil, err
+	}
+	//TODO bad length
+	pfcpSessionReportRequest, ok := pfcpMessage.(PFCPSessionReportRequest)
+	if !ok {
+		return nil, fmt.Errorf("PFCP Session Report Request could not type asserted")
+	}
+	pfcpHeader := pfcpSessionReportRequest.GetHeader()
+	seid := cpSEIDDPSEID.Value(pfcpHeader.SessionEndpointIdentifier)
+	pfcpHeader.MessageType = SessionReportResponseType
+	if seid == 0 {
+		pfcpHeader.SessionEndpointIdentifier = 0
+		c := ie.NewInformationElement(
+			ie.IECause,
+			0,
+			dt.OctetString([]byte{uint8(ie.SessionContextNotFound)}),
+		)
+		pfcpHeader.MessageLength = PFCPMessageSize + ie.IEBasicHeaderSize + c.Len()
+		pfcpSessionReportResponse := NewPFCPSessionReportResponse(pfcpHeader, &c, nil, nil, nil)
+		return pfcpSessionReportResponse.Serialize()
+	}
+	pfcpHeader.SessionEndpointIdentifier = seid
+	if pfcpSessionReportRequest.ReportType == nil || pfcpSessionReportRequest.ReportType.Type == ie.IEReserved {
+		c := ie.NewInformationElement(
+			ie.IECause,
+			0,
+			dt.OctetString([]byte{uint8(ie.MandatoryIEMissing)}),
+		)
+		o := ie.NewInformationElement(
+			ie.IEOffendingIE,
+			0,
+			dt.OctetString([]byte{uint8(pfcpSessionReportRequest.ReportType.Type)}),
+		)
+		pfcpHeader.MessageLength = PFCPMessageSize + ie.IEBasicHeaderSize + c.Len() + ie.IEBasicHeaderSize + o.Len()
+		pfcpSessionReportResponse := NewPFCPSessionReportResponse(pfcpHeader, &c, &o, nil, nil)
+		return pfcpSessionReportResponse.Serialize()
+	}
+	reportType := sr.NewReportTypeFromByte(pfcpSessionReportRequest.ReportType.Data.Serialize()[0])
+	if reportType.DLDR {
+		if pfcpSessionReportRequest.DownlinkDataReport == nil || pfcpSessionReportRequest.DownlinkDataReport.Type == ie.IEReserved {
+			c := ie.NewInformationElement(
+				ie.IECause,
+				0,
+				dt.OctetString([]byte{uint8(ie.ConditionalIEMissing)}),
+			)
+			o := ie.NewInformationElement(
+				ie.IEOffendingIE,
+				0,
+				dt.OctetString([]byte{uint8(pfcpSessionReportRequest.DownlinkDataReport.Type)}),
+			)
+			pfcpHeader.MessageLength = PFCPMessageSize + ie.IEBasicHeaderSize + c.Len() + ie.IEBasicHeaderSize + o.Len()
+			pfcpSessionReportResponse := NewPFCPSessionReportResponse(pfcpHeader, &c, &o, nil, nil)
+			return pfcpSessionReportResponse.Serialize()
+
+		} else {
+			//TODO Downlink Data Report
+			c := ie.NewInformationElement(
+				ie.IECause,
+				0,
+				dt.OctetString([]byte{uint8(ie.RequestAccepted)}),
+			)
+			pfcpHeader.MessageLength = PFCPMessageSize + ie.IEBasicHeaderSize + c.Len()
+			pfcpSessionReportResponse := NewPFCPSessionReportResponse(pfcpHeader, &c, nil, nil, nil)
+			return pfcpSessionReportResponse.Serialize()
+
+		}
+
+	} else if reportType.USAR {
+		//TODO Multi IEs needed!
+		if len(pfcpSessionReportRequest.UsageReport) > 0 && pfcpSessionReportRequest.UsageReport[0].Type != ie.IEReserved {
+			//TODO Usage  Report
+			c := ie.NewInformationElement(
+				ie.IECause,
+				0,
+				dt.OctetString([]byte{uint8(ie.RequestAccepted)}),
+			)
+			pfcpHeader.MessageLength = PFCPMessageSize + ie.IEBasicHeaderSize + c.Len()
+			pfcpSessionReportResponse := NewPFCPSessionReportResponse(pfcpHeader, &c, nil, nil, nil)
+			return pfcpSessionReportResponse.Serialize()
+
+		} else {
+			c := ie.NewInformationElement(
+				ie.IECause,
+				0,
+				dt.OctetString([]byte{uint8(ie.ConditionalIEMissing)}),
+			)
+			o := ie.NewInformationElement(
+				ie.IEOffendingIE,
+				0,
+				dt.OctetString([]byte{uint8(pfcpSessionReportRequest.UsageReport[0].Type)}),
+			)
+			pfcpHeader.MessageLength = PFCPMessageSize + ie.IEBasicHeaderSize + c.Len() + ie.IEBasicHeaderSize + o.Len()
+			pfcpSessionReportResponse := NewPFCPSessionReportResponse(pfcpHeader, &c, &o, nil, nil)
+			return pfcpSessionReportResponse.Serialize()
+
+		}
+	} else if reportType.ERIR {
+		//TODO Multi IEs needed!
+		if pfcpSessionReportRequest.ErrorIndicationReport == nil || pfcpSessionReportRequest.ErrorIndicationReport.Type == ie.IEReserved {
+			c := ie.NewInformationElement(
+				ie.IECause,
+				0,
+				dt.OctetString([]byte{uint8(ie.ConditionalIEMissing)}),
+			)
+			o := ie.NewInformationElement(
+				ie.IEOffendingIE,
+				0,
+				dt.OctetString([]byte{uint8(pfcpSessionReportRequest.ErrorIndicationReport.Type)}),
+			)
+			pfcpHeader.MessageLength = PFCPMessageSize + ie.IEBasicHeaderSize + c.Len() + ie.IEBasicHeaderSize + o.Len()
+			pfcpSessionReportResponse := NewPFCPSessionReportResponse(pfcpHeader, &c, &o, nil, nil)
+			return pfcpSessionReportResponse.Serialize()
+
+		} else {
+			//TODO Usage  Report
+			c := ie.NewInformationElement(
+				ie.IECause,
+				0,
+				dt.OctetString([]byte{uint8(ie.RequestAccepted)}),
+			)
+			pfcpHeader.MessageLength = PFCPMessageSize + ie.IEBasicHeaderSize + c.Len()
+			pfcpSessionReportResponse := NewPFCPSessionReportResponse(pfcpHeader, &c, nil, nil, nil)
+			return pfcpSessionReportResponse.Serialize()
+
+		}
+
+	}
+	return nil, fmt.Errorf("Error in creating PFCP Session Report Response")
+	//pfc
+	//NewReportTypeFromByte(b byte) ReportType
+
 }
