@@ -87,6 +87,12 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 		createQER, _ := sr.CreateQER.Serialize()
 		createQEREnd := createUrrEnd + ie.IEBasicHeaderSize + sr.CreateQER.Len()
 		copy(output[createUrrEnd:createQEREnd], createQER)
+		createUrrEnd = createQEREnd
+	}
+
+	if sr.UserPlaneInactivityTimer != nil && sr.UserPlaneInactivityTimer.Type != ie.IEReserved {
+		upInactivityTimer, _ := sr.UserPlaneInactivityTimer.Serialize()
+		copy(output[createUrrEnd:], upInactivityTimer)
 	}
 	return output, nil
 	//TODO: remaining to be added

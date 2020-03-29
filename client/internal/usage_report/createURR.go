@@ -1,13 +1,15 @@
 package usage_report
 
 import (
+	"fmt"
+
 	"bitbucket.org/sothy5/n4-go/ie"
 	"bitbucket.org/sothy5/n4-go/ie/urr"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
 func NewCreateURR(urrid uint32, m *urr.MeasurementMethod, r *urr.ReportingTriggers, mp uint32, tt uint32) (*ie.InformationElement, error) {
-	//TODO Time Quota/Quota Holding Time/Subsequent Time Threshold/Inactivity Detection Time Value is duration <<uint32>>
+	//T55ODO Time Quota/Quota Holding Time/Subsequent Time Threshold/Inactivity Detection Time Value is duration <<uint32>>
 	urrIE := ie.NewInformationElement(
 		ie.IEURRID,
 		0,
@@ -33,14 +35,14 @@ func NewCreateURR(urrid uint32, m *urr.MeasurementMethod, r *urr.ReportingTrigge
 	}
 	data = append(data, data1...)
 
-	b, err = m.Serialize()
+	b1, err := r.Serialize()
 	if err != nil {
 		return nil, err
 	}
 	rrIE := ie.NewInformationElement(
 		ie.IEReportingTriggers,
 		0,
-		dt.OctetString(b),
+		dt.OctetString(b1),
 	)
 	data1, err = rrIE.Serialize()
 	if err != nil {
@@ -61,16 +63,33 @@ func NewCreateURR(urrid uint32, m *urr.MeasurementMethod, r *urr.ReportingTrigge
 		data = append(data, data1...)
 	}
 
-	ttIE := ie.NewInformationElement(
-		ie.IETimeThreshold,
-		0,
-		dt.Unsigned32(tt),
-	)
-	data1, err = ttIE.Serialize()
-	if err != nil {
-		return nil, err
+	if r.TIMTH {
+
+		ttIE := ie.NewInformationElement(
+			ie.IETimeThreshold,
+			0,
+			dt.Unsigned32(tt),
+		)
+		data1, err = ttIE.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, data1...)
 	}
-	data = append(data, data1...)
+
+	if r.TIMQU {
+		fmt.Println("Time!!")
+		ttIE := ie.NewInformationElement(
+			ie.IETimeQuota,
+			0,
+			dt.Unsigned32(tt),
+		)
+		data1, err = ttIE.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, data1...)
+	}
 
 	createurr := ie.NewInformationElement(
 		ie.IECreateURR,

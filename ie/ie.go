@@ -131,6 +131,7 @@ const (
 
 	IEFailedRuleID                   IEType = 114
 	IEUserPlaneIPResourceInformation IEType = 116
+	IEUserPlaneInactivityTimer       IEType = 117
 	IERQI                            IEType = 123
 	IEQFI                            IEType = 124
 
@@ -247,6 +248,7 @@ func (ies *InformationElements) FromBytes(data []byte) error {
 	var ie InformationElement
 	for buf.Has(4) {
 		ietype := IEType(buf.Read16())
+		fmt.Printf("IEType %+v\n", ietype)
 		length := buf.Read16()
 		data, err := buf.ReadN(int(length))
 		if err != nil {
@@ -271,7 +273,7 @@ func (ies *InformationElements) FromBytes(data []byte) error {
 
 }
 
-type InterfaceValue int
+type InterfaceValue uint8
 
 const (
 	Access InterfaceValue = iota
@@ -289,3 +291,5 @@ const (
 	NOCP
 	DUPL
 )
+
+type UPInactivityTimer uint32

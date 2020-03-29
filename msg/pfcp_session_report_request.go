@@ -111,6 +111,7 @@ func ProcessPFCPSessionReportRequest(m *PFCPMessage, cpSEIDDPSEID *se.CPSEIDDPSE
 		return pfcpSessionReportResponse.Serialize()
 	}
 	reportType := sr.NewReportTypeFromByte(pfcpSessionReportRequest.ReportType.Data.Serialize()[0])
+	// TODO: Not handled when two or more flags are set
 	if reportType.DLDR {
 		if pfcpSessionReportRequest.DownlinkDataReport == nil || pfcpSessionReportRequest.DownlinkDataReport.Type == ie.IEReserved {
 			c := ie.NewInformationElement(
@@ -143,7 +144,7 @@ func ProcessPFCPSessionReportRequest(m *PFCPMessage, cpSEIDDPSEID *se.CPSEIDDPSE
 	} else if reportType.USAR {
 		//TODO Multi IEs needed!
 		if len(pfcpSessionReportRequest.UsageReport) > 0 && pfcpSessionReportRequest.UsageReport[0].Type != ie.IEReserved {
-			//TODO Usage  Report
+			//TODO Usage  Report needs to be printed or passed to other components
 			c := ie.NewInformationElement(
 				ie.IECause,
 				0,
@@ -198,6 +199,17 @@ func ProcessPFCPSessionReportRequest(m *PFCPMessage, cpSEIDDPSEID *se.CPSEIDDPSE
 			return pfcpSessionReportResponse.Serialize()
 
 		}
+
+	} else if reportType.UPIR {
+		c := ie.NewInformationElement(
+			ie.IECause,
+			0,
+			dt.OctetString([]byte{uint8(ie.RequestAccepted)}),
+		)
+		pfcpHeader.MessageLength = PFCPMessageSize + ie.IEBasicHeaderSize + c.Len()
+		pfcpSessionReportResponse := NewPFCPSessionReportResponse(pfcpHeader, &c, nil, nil, nil)
+		b, err := pfcpSessionReportResponse.Serialize()
+		return b, err
 
 	}
 	return nil, fmt.Errorf("Error in creating PFCP Session Report Response")

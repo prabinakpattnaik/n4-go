@@ -7,15 +7,19 @@ import (
 	"time"
 
 	"bitbucket.org/sothy5/n4-go/ie/bar"
-	"bitbucket.org/sothy5/n4-go/ie/qer"
+
+	//"bitbucket.org/sothy5/n4-go/ie/qer"
 	"bitbucket.org/sothy5/n4-go/ie/urr"
 	"bitbucket.org/sothy5/n4-go/msg"
+
 	"bitbucket.org/sothy5/n4-go/util/se"
 
 	setting "bitbucket.org/sothy5/n4-go/client/internal/helper"
 	"bitbucket.org/sothy5/n4-go/client/internal/server_wrap"
 	"bitbucket.org/sothy5/n4-go/client/internal/session"
 	"bitbucket.org/sothy5/n4-go/client/internal/usage_report"
+
+	//"bitbucket.org/sothy5/n4-go/client/internal/usage_report"
 	"bitbucket.org/sothy5/n4-go/ie"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 	log "github.com/sirupsen/logrus"
@@ -35,9 +39,12 @@ var (
 	teid                       uint32 = 0
 	sessionEntity                     = session.SessionEntity{M: make(map[uint32]session.SessionRequestResponse)}
 	seidsnEntity                      = session.SEIDSNEntity{M: make(map[uint64]session.SNCollection)}
-	NetworkInstance                   = "epc"
+	NetworkInstance                   = "internet"
 	seSEIDSN                          = session.SESEIDSNEntity{M: make(map[uint64]uint32)}
 	cpSEIDDPSEID                      = &se.CPSEIDDPSEIDEntity{M: make(map[uint64]uint64)}
+	counter                           = 1
+
+	ueIPAddress = net.ParseIP("172.105.1.241")
 )
 
 // Client implements a PFCP client
@@ -48,16 +55,23 @@ type Client struct {
 }
 
 // NewClient returns a Client with default settings
-func NewClient(rAddress string, lAddress string) *Client {
+func NewClient(lAddress string, rAddress string) *Client {
 	remoteIPv4address := net.ParseIP(rAddress)
 	raddr := fmt.Sprintf("%s:%d", remoteIPv4address, udpport)
 	dst, err := net.ResolveUDPAddr("udp", raddr)
 
 	if err != nil {
-		log.WithError(err).Error("resolveUDP Addr err ")
+		log.WithError(err).Error("resolveUDP dst Addr err ")
+	}
+	localIPv4address := net.ParseIP(lAddress)
+	laddr := fmt.Sprintf("%s:%d", localIPv4address, udpport)
+	src, err := net.ResolveUDPAddr("udp", laddr)
+
+	if err != nil {
+		log.WithError(err).Error("resolveUDP src Addr err ")
 	}
 
-	conn, err := net.DialUDP("udp4", nil, dst)
+	conn, err := net.DialUDP("udp4", src, dst)
 	if err != nil {
 		//TODO handle this error
 		log.WithError(err).Error("failure in connection setup")
@@ -167,21 +181,34 @@ func RecvProcess(c *Client) {
 			pfcpHeartbeat, ok := pfcp.(*msg.Heartbeat)
 			if ok {
 				log.WithFields(log.Fields{"data": rb}).Info("received PFCPHeartbeat Request")
-				r := ie.NewInformationElement(
-					ie.IERecoveryTimestamp,
-					0,
-					dt.Time(time.Now()),
-				)
+				/*
+					r := ie.NewInformationElement(
+						ie.IERecoveryTimestamp,
+						0,
+						dt.Time(time.Now()),
+					)
+				*/
 				h := pfcpHeartbeat.GetHeader()
 				h.MessageType = msg.HeartbeatResponseType
-				h.MessageLength = msg.PFCPBasicMessageSize + ie.IEBasicHeaderSize + r.Len()
-				heartbeat := msg.NewHeartbeat(h, &r)
+				//h.MessageLength = msg.PFCPBasicMessageSize + ie.IEBasicHeaderSize + r.Len()
+				heartbeat := msg.NewHeartbeat(h, pfcpHeartbeat.RecoveryTimeStamp)
 				b, _ := heartbeat.Serialize()
 				c.Write(b)
 				continue
 			}
 
-			log.WithFields(log.Fields{"data": rb}).Info("something went")
+			//pfcpSessionReportRequest
+			if pfcpMessage.Header.MessageType == msg.SessionReportRequestType {
+				log.WithFields(log.Fields{"data": rb}).Info("received PFCP Session Report Request")
+				b, err := msg.ProcessPFCPSessionReportRequest(pfcpMessage, cpSEIDDPSEID)
+				if err != nil {
+					log.WithError(err).Error("Process error in PFCP Session Report Request")
+				}
+				c.Write(b)
+				continue
+			}
+
+			log.WithFields(log.Fields{"data [%x]": rb}).Info("something went")
 		}
 	}
 
@@ -194,7 +221,7 @@ func run(c *cli.Context) error {
 	controlPlaneNodeID = append(controlPlaneNodeID, nodeIP.To4()...)
 
 	rIPv4address := c.String("remoteIP")
-	client := NewClient(rIPv4address, lIPv4address)
+	client := NewClient(lIPv4address, rIPv4address)
 	var upIPRI ie.UPIPResourceInformation
 	var upIPRIs []ie.UPIPResourceInformation
 	upIPRIC := make(chan []ie.UPIPResourceInformation)
@@ -323,7 +350,7 @@ func run(c *cli.Context) error {
 
 	go RecvProcess(client)
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < counter; i++ {
 		teid++
 		sequenceNumber++
 		seid++
@@ -331,32 +358,34 @@ func run(c *cli.Context) error {
 
 		var pfcpSessionEstablishmentRequest *msg.PFCPSessionEstablishmentRequest
 		var err error
+
 		// Time Threshold based URR is created.
 		m := urr.NewMeasurementMethod(true, false, false)
-		r := urr.NewReportingTriggers(false, false, true, false, false, false, false, false, false, false, false, false, false, false)
-		//3600*10s for Time Threshold
-		createURR, err := usage_report.NewCreateURR(1, m, r, 0, 36000)
+
+		r := urr.NewReportingTriggers(false, false, false, false, false, false, false, false, false, true, false, false, false, false)
+		//2*60s for Time Threshold
+		createURR, err := usage_report.NewCreateURR(1, m, r, 0, 120)
 
 		//QER
-		gateStatus := qer.NewGateStatus(qer.OPEN, qer.CLOSED)
-		mbr := qer.NewBR(1024, 0)
-		gbr := qer.NewBR(512, 0)
-		qfi := uint8(4)
-		rqi := true
-		createQER, err := qer.NewCreateQER(1, 0, gateStatus, mbr, gbr, qfi, rqi)
-		if err != nil {
-			log.WithError(err).Error("error in creating CreateQER")
-			continue
-		}
-
+		/*
+			gateStatus := qer.NewGateStatus(qer.OPEN, qer.CLOSED)
+			mbr := qer.NewBR(1024, 0)
+			gbr := qer.NewBR(512, 0)
+			qfi := uint8(4)
+			rqi := true
+			createQER, err := qer.NewCreateQER(1, 0, gateStatus, mbr, gbr, qfi, rqi)
+			if err != nil {
+				log.WithError(err).Error("error in creating CreateQER")
+				continue
+			}
+		*/
 		if ftup {
 			fteid, _ := setting.Assign_tunnelID(nil, 0)
-			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, nil, createURR, 1, createQER, 1)
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, ie.SGiN6LAN, nil, createURR, 1, nil, 1, ueIPAddress)
 		} else {
 			fteid, _ := setting.Assign_tunnelID(upIPRI.IPv4Address, teid)
 			log.WithFields(log.Fields{"Ftied V4": upIPRI.IPv4Address}).Info("FTEID IPv4 address")
-
-			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, 1, upIPRI.NetworkInstance, createURR, 1, createQER, 1)
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, ie.SGiN6LAN, upIPRI.NetworkInstance, createURR, 1, nil, 1, ueIPAddress)
 		}
 		if err != nil {
 			log.WithError(err).Error("error in pfcpSessionEstablishmentRequest")
@@ -382,11 +411,11 @@ func run(c *cli.Context) error {
 	//TODO: Keep NodeID, UPFunctionFeatures, and UPIPResourceInformation
 	//if we knew SEID,
 	//PDR ID, FAR ID ? unique within a session or anytime?
-	ueIPAddress := net.ParseIP("10.1.1.1")
-	rIPAddress := net.ParseIP("192.168.1.1")
+
+	rIPAddress := net.ParseIP("172.30.1.1")
 	rteid := uint32(5000)
 	sn := uint32(101)
-	for i := 0; i < 10; i++ {
+	for i := 0; i < counter; i++ {
 		srr := sessionEntity.Value(sn)
 		sequenceNumber++
 		if srr.SRequest != nil {
@@ -406,9 +435,9 @@ func run(c *cli.Context) error {
 				continue
 			}
 			if ftup {
-				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, 0, rIPAddress, ie.BUFF, ie.Access, nil, createBAR)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.SGiN6LAN, ueIPAddress, 0, rIPAddress, ie.FORW, ie.Access, nil, createBAR)
 			} else {
-				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.Core, ueIPAddress, rteid, rIPAddress, ie.BUFF, ie.Access, upIPRI.NetworkInstance, createBAR)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.SGiN6LAN, ueIPAddress, rteid, rIPAddress, ie.FORW, ie.Access, upIPRI.NetworkInstance, createBAR)
 			}
 
 			if err != nil {
@@ -432,32 +461,34 @@ func run(c *cli.Context) error {
 
 	time.Sleep(7 * time.Second)
 
-	sn = uint32(101)
-	for i := 0; i < 10; i++ {
-		srr := sessionEntity.Value(sn)
-		sequenceNumber++
-		if srr.SRequest != nil {
-			seid := cpSEIDDPSEID.Value(srr.SRequest.GetHeader().SessionEndpointIdentifier)
-			if seid == 0 {
-				fmt.Printf("SEID before delete %d\n", srr.SRequest.GetHeader().SessionEndpointIdentifier)
-				seid = srr.SRequest.GetHeader().SessionEndpointIdentifier
-			}
-			pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionDeletionRequestType, 12, seid, sequenceNumber, 0)
-			b := pfcpHeader.Serialize()
-			client.Write(b)
-			log.WithFields(log.Fields{"data": b}).Info("received pfcpSessionDeletionRequest")
+	/*
+		sn = uint32(101)
+		for i := 0; i < counter; i++ {
+			srr := sessionEntity.Value(sn)
+			sequenceNumber++
+			if srr.SRequest != nil {
+				seid := cpSEIDDPSEID.Value(srr.SRequest.GetHeader().SessionEndpointIdentifier)
+				if seid == 0 {
+					fmt.Printf("SEID before delete %d\n", srr.SRequest.GetHeader().SessionEndpointIdentifier)
+					seid = srr.SRequest.GetHeader().SessionEndpointIdentifier
+				}
+				pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionDeletionRequestType, 12, seid, sequenceNumber, 0)
+				b := pfcpHeader.Serialize()
+				client.Write(b)
+				log.WithFields(log.Fields{"data": b}).Info("received pfcpSessionDeletionRequest")
 
-			sn++
+				sn++
 
-			sdr := msg.NewPFCPSessionDeletionRequest(pfcpHeader)
-			sessionRequestResponse := session.SessionRequestResponse{
-				SRequest: &sdr,
+				sdr := msg.NewPFCPSessionDeletionRequest(pfcpHeader)
+				sessionRequestResponse := session.SessionRequestResponse{
+					SRequest: &sdr,
+				}
+				sessionEntity.Inc(sequenceNumber, sessionRequestResponse)
+				seidsnEntity.Inc(srr.SRequest.GetHeader().SessionEndpointIdentifier, 3, sequenceNumber)
 			}
-			sessionEntity.Inc(sequenceNumber, sessionRequestResponse)
-			seidsnEntity.Inc(srr.SRequest.GetHeader().SessionEndpointIdentifier, 3, sequenceNumber)
 		}
-	}
-	time.Sleep(5 * time.Second)
+	*/
+	time.Sleep(320 * time.Second)
 
 	return nil
 
@@ -472,12 +503,12 @@ func main() {
 		&cli.StringFlag{
 			Name:  "localIP,l",
 			Usage: "localIP address",
-			Value: "127.0.0.1",
+			Value: "172.32.1.1",
 		},
 		&cli.StringFlag{
 			Name:  "remoteIP,r",
 			Usage: "remoteIP address",
-			Value: "127.0.0.1",
+			Value: "172.32.1.2",
 		},
 		&cli.BoolFlag{
 			Name:  "clientInit,c",

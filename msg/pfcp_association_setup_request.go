@@ -48,6 +48,8 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	var offending, createdpdr ie.InformationElement
 	var rPDR, rFAR, rURR, rQER, rBAR, rTE ie.InformationElement
 	var uis ie.InformationElements
+	var reportType ie.InformationElement
+	var usageReports ie.InformationElements
 
 	for _, informationElement := range m.IEs {
 		switch informationElement.Type {
@@ -89,8 +91,12 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 			rQER = informationElement
 		case ie.IERemoveBAR:
 			rBAR = informationElement
+		case ie.IEReportType:
+			reportType = informationElement
 		case ie.IERemoveTrafficEndpoint:
 			rTE = informationElement
+		case ie.IEUsageReportSRR:
+			usageReports = append(usageReports, informationElement)
 
 		default:
 			fmt.Printf("unhandled information element %+v\n", informationElement)
@@ -124,6 +130,9 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	case SessionDeletionResponseType:
 		pfcpSessionDeletionResponse := NewPFCPSessionDeletionResponse(m.Header, &cause, &offending)
 		return pfcpSessionDeletionResponse, nil
+	case SessionReportRequestType:
+		pfcpSessionReportRequest := NewPFCPSessionReportRequest(m.Header, &reportType, nil, nil, nil, nil, nil, usageReports)
+		return pfcpSessionReportRequest, nil
 	default:
 		return nil, fmt.Errorf("No matching PFCP Message Type")
 	}

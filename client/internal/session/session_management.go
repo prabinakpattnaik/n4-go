@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	precedance = 10
-	oHR        = []byte{0x06} //GTP-U/UDP/IP
+	precedance  = 10
+	oHR         = []byte{0x00} //GTP-U/UDP/IP4
+	UEIPaddress = ""
 )
 
 func ProcessPFCPSessionEstablishmentResponse(m *msg.PFCPMessage) ([]byte, error) {
@@ -23,7 +24,7 @@ func ProcessPFCPSessionEstablishmentResponse(m *msg.PFCPMessage) ([]byte, error)
 	return nil, nil
 }
 
-func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint16, farid uint32, sourceinterface uint8, fteid *ie.FTEID, aa, destionationinterface uint8, ni []byte, c *ie.InformationElement, urrid uint32, createQER *qer.CreateQER, qerid uint32) (*msg.PFCPSessionEstablishmentRequest, error) {
+func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint16, farid uint32, sourceinterface ie.InterfaceValue, fteid *ie.FTEID, aa uint8, destionationinterface ie.InterfaceValue, ni []byte, c *ie.InformationElement, urrid uint32, createQER *qer.CreateQER, qerid uint32, ueipAddress net.IP) (*msg.PFCPSessionEstablishmentRequest, error) {
 	//TODO nodeIP is IPv4 address.
 	// Need to change when accomadating FQDN
 	// SN incremental (request and response has same value)
@@ -55,7 +56,7 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 	si := ie.NewInformationElement(
 		ie.IESourceInterface,
 		0,
-		dt.OctetString([]byte{sourceinterface}),
+		dt.OctetString(sourceinterface),
 	)
 
 	var pdi *ie.PDI
@@ -79,7 +80,19 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 			)
 		}
 
-		pdi = ie.NewPDI(&si, &fteidIE, &networkInstance, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		ueIPAddress := ie.NewUEIPAddress(false, true, false, false, ueipAddress, nil, 0)
+		bb, err := ueIPAddress.Serialize()
+		if err != nil {
+			return nil, err
+		}
+
+		ueIPAddressIE := ie.NewInformationElement(
+			ie.IEUEIPaddress,
+			0,
+			dt.OctetString(bb),
+		)
+
+		pdi = ie.NewPDI(&si, &fteidIE, &networkInstance, &ueIPAddressIE, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	} else {
 		pdi = ie.NewPDI(&si, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	}
@@ -119,17 +132,20 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 		0,
 		dt.Unsigned32(farid),
 	)
+
 	urrIDIE := ie.NewInformationElement(
 		ie.IEURRID,
 		0,
 		dt.Unsigned32(urrid),
 	)
-	qerIDIE := ie.NewInformationElement(
-		ie.IEQERID,
-		0,
-		dt.Unsigned32(qerid),
-	)
-	createPDR := ie.NewCreatePDR(&pdrIDIE, &precedenceIE, &pdiIE, &outerHeaderRemovalIE, &farIDIE, &urrIDIE, &qerIDIE, nil)
+	/*
+		qerIDIE := ie.NewInformationElement(
+			ie.IEQERID,
+			0,
+			dt.Unsigned32(qerid),
+		)
+	*/
+	createPDR := ie.NewCreatePDR(&pdrIDIE, &precedenceIE, &pdiIE, &outerHeaderRemovalIE, &farIDIE, &urrIDIE, nil, nil)
 
 	bb, err = createPDR.Serialize()
 	if err != nil {
@@ -153,10 +169,20 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 	destionationInterfaceIE := ie.NewInformationElement(
 		ie.IEDestinationInterface,
 		0,
-		dt.OctetString([]byte{destionationinterface}),
+		dt.OctetString(destionationinterface),
+	)
+	b := []byte("sgi")
+	l := len(b)
+	b1 := make([]byte, l+1)
+	b1[0] = byte(l)
+	copy(b1[1:], b)
+	networkInstance := ie.NewInformationElement(
+		ie.IENetworkInstance,
+		0,
+		dt.OctetString(b1),
 	)
 
-	fp := ie.NewForwardingParameters(&destionationInterfaceIE, nil, nil, nil, nil, nil, nil, nil, nil)
+	fp := ie.NewForwardingParameters(&destionationInterfaceIE, &networkInstance, nil, nil, nil, nil, nil, nil, nil)
 	bb, err = fp.Serialize()
 	if err != nil {
 		return nil, err
@@ -179,23 +205,43 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 		dt.OctetString(bb),
 	)
 	length = length + ie.IEBasicHeaderSize + createFARIE.Len()
-	length += ie.IEBasicHeaderSize + c.Len()
 
-	bb, err = createQER.Serialize()
-	if err != nil {
-		return nil, err
+	if c != nil {
+		length += ie.IEBasicHeaderSize + c.Len()
 	}
-	createQERIE := ie.NewInformationElement(
-		ie.IECreateQER,
+
+	var createQERIE ie.InformationElement
+	if createQER != nil {
+		bb, err = createQER.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		createQERIE = ie.NewInformationElement(
+			ie.IECreateQER,
+			0,
+			dt.OctetString(bb),
+		)
+		length = length + ie.IEBasicHeaderSize + createQERIE.Len()
+	}
+
+	//user plane inactivity Timer
+
+	upInactivityTimerIE := ie.NewInformationElement(
+		ie.IEUserPlaneInactivityTimer,
 		0,
-		dt.OctetString(bb),
+		dt.Unsigned32(300),
 	)
-	length = length + ie.IEBasicHeaderSize + createQERIE.Len()
+	length = length + ie.IEBasicHeaderSize + upInactivityTimerIE.Len()
 
 	pfcpHeader := msg.NewPFCPHeader(1, false, true, msg.SessionEstablishmentRequestType, length+12, sei, sn, 0)
-	pfcpSessionEstablishmentRequest := msg.NewPFCPSessionEstablishmentRequest(pfcpHeader, &nodeIDIE, &cpfseidIE, &createPDRIE, &createFARIE, c, &createQERIE, nil, nil, nil, nil, nil, nil)
-
-	return &pfcpSessionEstablishmentRequest, nil
+	if createQERIE.Type == ie.IEReserved {
+		pfcpSessionEstablishmentRequest := msg.NewPFCPSessionEstablishmentRequest(pfcpHeader, &nodeIDIE, &cpfseidIE, &createPDRIE, &createFARIE, c, nil, nil, nil, nil, &upInactivityTimerIE, nil, nil)
+		return &pfcpSessionEstablishmentRequest, nil
+	} else {
+		pfcpSessionEstablishmentRequest := msg.NewPFCPSessionEstablishmentRequest(pfcpHeader, &nodeIDIE, &cpfseidIE, &createPDRIE, &createFARIE, c, &createQERIE, nil, nil, nil, &upInactivityTimerIE, nil, nil)
+		return &pfcpSessionEstablishmentRequest, nil
+	}
+	return nil, nil
 
 }
 
@@ -237,14 +283,18 @@ func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinte
 		dt.OctetString(bb),
 	)
 
+	b := []byte("sgi")
+	l := len(b)
+	b1 := make([]byte, l+1)
+	b1[0] = byte(l)
+	copy(b1[1:], b)
+
 	var networkInstance ie.InformationElement
-	if len(ni) > 0 {
-		networkInstance = ie.NewInformationElement(
-			ie.IENetworkInstance,
-			0,
-			dt.OctetString(ni),
-		)
-	}
+	networkInstance = ie.NewInformationElement(
+		ie.IENetworkInstance,
+		0,
+		dt.OctetString(b1),
+	)
 
 	pdi := ie.NewPDI(&si, nil, &networkInstance, &ueIPAddressIE, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	pdiB, err := pdi.Serialize()
@@ -259,7 +309,7 @@ func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinte
 	)
 
 	createPDR := ie.NewCreatePDR(&pdrIDIE, &precedence, &pdiIE, nil, &farIDIE, nil, nil, nil)
-	b, err := createPDR.Serialize()
+	b, err = createPDR.Serialize()
 	if err != nil {
 		return nil, err
 
@@ -299,10 +349,16 @@ func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinte
 		0,
 		dt.OctetString(byte(dInterface)),
 	)
+
+	networkInstance = ie.NewInformationElement(
+		ie.IENetworkInstance,
+		0,
+		dt.OctetString(ni),
+	)
 	var createFAR *ie.CreateFAR
 	if aa == ie.FORW {
 		ohcd := uint8(1)
-		ohc := ie.NewOuterHeaderCreation(ohcd, teid, ueipAddress, nil, 0)
+		ohc := ie.NewOuterHeaderCreation(ohcd, teid, remoteIP, nil, 0)
 		b, err = ohc.Serialize()
 		if err != nil {
 			return nil, err
@@ -312,7 +368,7 @@ func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinte
 			0,
 			dt.OctetString(b),
 		)
-		fp := ie.NewForwardingParameters(&desIE, nil, nil, &ohcIE, nil, nil, nil, nil, nil)
+		fp := ie.NewForwardingParameters(&desIE, &networkInstance, nil, &ohcIE, nil, nil, nil, nil, nil)
 		bb, err = fp.Serialize()
 		if err != nil {
 			return nil, err
