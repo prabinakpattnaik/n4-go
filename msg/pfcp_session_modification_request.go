@@ -17,8 +17,8 @@ type PFCPSessionModificationRequest struct {
 	RemoveQER                *ie.InformationElement
 	RemoveBAR                *ie.InformationElement
 	RemoveTrafficEndpoint    *ie.InformationElement
-	CreatePDR                *ie.InformationElement
-	CreateFAR                *ie.InformationElement
+	CreatePDR                *ie.InformationElements
+	CreateFAR                *ie.InformationElements
 	CreateURR                *ie.InformationElement
 	CreateQER                *ie.InformationElement
 	CreateBAR                *ie.InformationElement
@@ -37,7 +37,7 @@ type PFCPSessionModificationRequest struct {
 }
 
 //NewPFCPSessionModificationRequest creates new PFCPSessionMondificationRequst
-func NewPFCPSessionModificationRequest(h *PFCPHeader, cpfseid, rPDR, rFAR, rURR, rQER, rBAR, rTE, cPDR, cFAR, cURR, cQER, cBAR, cTE, uPDR, uFAR, uURR, uQER, uBAR, uTE, pfcpSMReqFlags, qURR, userPIT, qURRReference, traceInformation *ie.InformationElement) PFCPSessionModificationRequest {
+func NewPFCPSessionModificationRequest(h *PFCPHeader, cpfseid, rPDR, rFAR, rURR, rQER, rBAR, rTE *ie.InformationElement, cPDR, cFAR *ie.InformationElements, cURR, cQER, cBAR, cTE, uPDR, uFAR, uURR, uQER, uBAR, uTE, pfcpSMReqFlags, qURR, userPIT, qURRReference, traceInformation *ie.InformationElement) PFCPSessionModificationRequest {
 	return PFCPSessionModificationRequest{
 		Header:                   h,
 		CPFSEID:                  cpfseid,
@@ -69,7 +69,7 @@ func NewPFCPSessionModificationRequest(h *PFCPHeader, cpfseid, rPDR, rFAR, rURR,
 }
 
 func (smr PFCPSessionModificationRequest) Serialize() ([]byte, error) {
-	pfcpend := uint16(PFCPBasicHeaderLength) + PFCPMessageSize
+	messageLength := smr.GetHeader().MessageLength+ uint16(PFCPBasicHeaderLength) 
 	output := smr.Header.Serialize()
 	b := []byte{}
 	var err error
@@ -128,7 +128,7 @@ func (smr PFCPSessionModificationRequest) Serialize() ([]byte, error) {
 		}
 		b = append(b, rte...)
 	}
-
+        /*
 	if smr.CreatePDR != nil {
 		cpdr, err := smr.CreatePDR.Serialize()
 		if err != nil {
@@ -144,6 +144,24 @@ func (smr PFCPSessionModificationRequest) Serialize() ([]byte, error) {
 		}
 		b = append(b, cfar...)
 	}
+	*/
+	for _, pdrie := range *smr.CreatePDR {
+                createpdr, err := pdrie.Serialize()
+                if err != nil {
+                        return nil, err
+                }
+               b = append(b, createpdr...)
+        }
+
+        for _, farie := range *smr.CreateFAR {
+                 createfar, err := farie.Serialize()
+                if err != nil {
+                        
+                        return nil, err
+                }
+                b = append(b, createfar...)
+        }
+
 
 	if smr.CreateURR != nil {
 		curr, err := smr.CreateURR.Serialize()
@@ -177,11 +195,12 @@ func (smr PFCPSessionModificationRequest) Serialize() ([]byte, error) {
 		b = append(b, cte...)
 	}
 
-	copy(output[pfcpend:], b)
-
-	//TODO: remaining from UpdateIE, .....
-
-	return output, nil
+	output=append(output, b...)
+	if uint16(len(output))==messageLength {
+		return output, nil
+	}else {
+	return nil, fmt.Errorf("Error in serialization of PFCP Session Modification Request")
+}
 
 }
 

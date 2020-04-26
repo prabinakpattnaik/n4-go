@@ -2,70 +2,55 @@ package ie
 
 import (
 	"fmt"
+
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
-// CreateFAR struct
 type CreateFAR struct {
-	FARID                 *InformationElement
-	ApplyAction           *InformationElement
-	ForwardingParameters  *InformationElement
-	DuplicatingParameters *InformationElement
-	BARID                 *InformationElement
+	FarID                *FARID                       `tlv:"108"`
+	ApplyAction          *ApplyAction                 `tlv:"44"`
+	ForwardingParameters *ForwardingParametersIEInFAR `tlv:"4"`
+	//DuplicatingParameters *DuplicatingParameters          `tlv:"5"`
+	//BARID                 *BARID                          `tlv:"88"`
 }
 
-//NewCreateFAR creates new CreateFAR struct
-func NewCreateFAR(farid, applyAction, forwardingParameters, duplicatingParameters, barid *InformationElement) *CreateFAR {
-	return &CreateFAR{
-		FARID:                 farid,
-		ApplyAction:           applyAction,
-		ForwardingParameters:  forwardingParameters,
-		DuplicatingParameters: duplicatingParameters,
-		BARID:                 barid,
+func (c *CreateFAR) Serialize() ([]byte, error) {
+	if c.FarID == nil {
+		return nil, fmt.Errorf("Mandory field is missing in Create FAR(FARID)")
 	}
+	f := NewInformationElement(
+		IEFARID,
+		0,
+		dt.Unsigned32(c.FarID.FarIdValue),
+	)
 
-}
-
-//Serialize function convert CreateFAR struct into byte array
-func (c CreateFAR) Serialize() ([]byte, error) {
-	if c.FARID == nil || c.FARID.Type == IEReserved {
-		return nil, fmt.Errorf("CreateFAR does not have valid FARID")
+	if c.ApplyAction == nil {
+		return nil, fmt.Errorf("Mandory field is missing in Create FAR(ApplyAction)")
 	}
-	b, err := c.FARID.Serialize()
+	b, err := c.ApplyAction.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("FARID serialization error")
+		return nil, err
 	}
-
-	if c.ApplyAction == nil || c.ApplyAction.Type == IEReserved {
-		return nil, fmt.Errorf("CreateFAR does not have valid ApplyAction")
-	}
-	b1, err := c.ApplyAction.Serialize()
-	if err != nil {
-		return nil, fmt.Errorf("ApplyAction serialization error")
-	}
-	b = append(b, b1...)
-
-	if c.ForwardingParameters != nil && c.ForwardingParameters.Type != IEReserved {
-		b1, err = c.ForwardingParameters.Serialize()
+	applyAction := dt.OctetString(b)
+	a := NewInformationElement(
+		IEApplyAction,
+		0,
+		applyAction,
+	)
+	var fpIE InformationElement
+	if c.ForwardingParameters != nil {
+		bb, err := c.ForwardingParameters.Serialize()
 		if err != nil {
-			return nil, fmt.Errorf("Forwarding parameters serialization error")
+			return nil, err
 		}
-		b = append(b, b1...)
-	}
 
-	if c.DuplicatingParameters != nil && c.DuplicatingParameters.Type != IEReserved {
-		b1, err = c.DuplicatingParameters.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("DuplicatingParameters serialization error")
-		}
-		b = append(b, b1...)
+		fpIE = NewInformationElement(
+			IEForwardingParameters,
+			0,
+			dt.OctetString(bb),
+		)
 	}
+	createFAR := NewCreateFAR(&f, &a, &fpIE, nil, nil)
+	return createFAR.Serialize()
 
-	if c.BARID != nil && c.BARID.Type != IEReserved {
-		b1, err = c.BARID.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("BARID serialization error")
-		}
-		b = append(b, b1...)
-	}
-	return b, nil
 }

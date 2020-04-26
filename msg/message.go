@@ -10,6 +10,13 @@ import (
 
 //The messages inlcuding headers here are implemented as per 3GPPP 29.244 15.5.0 specification
 
+const ( PFCPVERSION   uint8 = 1
+
+	SEID_PRESENT        = true
+	MP_PRESENT          = true
+)
+
+
 var (
 	PFCPBasicHeaderLength = 4
 	PFCPBasicMessageSize  = uint16(4)
@@ -71,7 +78,7 @@ func NewPFCPHeader(v uint8, mp bool, s bool, mt PFCPType, ml uint16, sei uint64,
 }
 
 func (p PFCPHeader) Serialize() []byte {
-	var b = make([]byte, p.MessageLength+uint16(PFCPBasicHeaderLength))
+	var b = make([]byte, uint16(PFCPBasicHeaderLength))
 	var a uint8
 
 	//first byte format: [v][v][v][][][][mp][s]
@@ -90,16 +97,18 @@ func (p PFCPHeader) Serialize() []byte {
 	binary.BigEndian.PutUint16(b[2:4], p.MessageLength)
 
 	if p.S {
-		binary.BigEndian.PutUint64(b[4:12], p.SessionEndpointIdentifier)
-		b[12] = uint8(p.SequenceNumber >> 16)
-		b[13] = uint8(p.SequenceNumber >> 8)
-		b[14] = uint8(p.SequenceNumber)
-		b[15] = p.MessagePriority << 4
+		buf :=make([]byte,8)	
+		binary.BigEndian.PutUint64(buf, p.SessionEndpointIdentifier)
+		b=append(b,buf...)
+		b=append(b, uint8(p.SequenceNumber >> 16))
+		b=append(b, uint8(p.SequenceNumber >> 8))
+		b=append(b, uint8(p.SequenceNumber))
+		b=append(b, p.MessagePriority << 4)
 	} else {
-		b[4] = uint8(p.SequenceNumber >> 16)
-		b[5] = uint8(p.SequenceNumber >> 8)
-		b[6] = uint8(p.SequenceNumber)
-		b[7] = 0
+		b=append(b, uint8(p.SequenceNumber >> 16))
+		b=append(b,uint8(p.SequenceNumber >> 8))
+		b=append(b, uint8(p.SequenceNumber))
+		b=append(b, 0)
 	}
 
 	//TODO: mp condition

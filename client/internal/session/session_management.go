@@ -59,7 +59,7 @@ func CreateSession(sei uint64, sn uint32, nodeIP net.IP, seid uint64, pdrid uint
 		dt.OctetString(sourceinterface),
 	)
 
-	var pdi *ie.PDI
+	var pdi *ie.PDIWithIE
 
 	if fteid != nil {
 		bb, err = fteid.Serialize()
@@ -355,7 +355,7 @@ func ModifySession(sei uint64, sn uint32, pdrid uint16, farid uint32, sourceinte
 		0,
 		dt.OctetString(ni),
 	)
-	var createFAR *ie.CreateFAR
+	var createFAR *ie.CreateFARWithIE
 	if aa == ie.FORW {
 		ohcd := uint8(1)
 		ohc := ie.NewOuterHeaderCreation(ohcd, teid, remoteIP, nil, 0)

@@ -5,6 +5,13 @@ import (
 	"net"
 )
 
+const (
+	OuterHeaderCreationGtpUUdpIpv4 uint8 = 1
+	OuterHeaderCreationGtpUUdpIpv6 uint8 = 1 << 1
+	OuterHeaderCreationUdpIpv4     uint8 = 1 << 2
+	OuterHeaderCreationUdpIpv6     uint8 = 1 << 3
+)
+
 //OuterHeaderCreation defines struct
 type OuterHeaderCreation struct {
 	OuterHeaderCreationDescription uint8
@@ -48,6 +55,5 @@ func (ohc OuterHeaderCreation) Serialize() ([]byte, error) {
 		binary.BigEndian.PutUint16(buf, ohc.PortNumber)
 		b = append(b, buf...)
 	}
-
 	return b, nil
 }

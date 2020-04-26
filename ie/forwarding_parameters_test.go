@@ -5,6 +5,7 @@ import (
 	"net"
 	"testing"
 
+	"bitbucket.org/sothy5/n4-go/util/util_3gpp"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
@@ -26,16 +27,13 @@ func TestIEForwardingParameters(t *testing.T) {
 	}
 
 	fp := NewInformationElement(
-
 		IEForwardingParameters,
 		0,
 		dt.OctetString(b),
 	)
 
 	if fp.Length != uint16(len(b)) {
-
 		t.Fatalf("Unexpected length. want %d, have %d", len(b), fp.Length)
-
 	}
 
 	ba := []byte{0x00, 0x04, 0x00, 0x5, 0x00, 0x2a, 0x00, 0x01, 0x01}
@@ -43,13 +41,10 @@ func TestIEForwardingParameters(t *testing.T) {
 	bb, err := fp.Serialize()
 	if err != nil {
 		t.Fatalf("Error in serializing %+v", err)
-
 	}
 
 	if !bytes.Equal(bb, ba) {
-
 		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
-
 	}
 
 }
@@ -86,9 +81,38 @@ func TestForwardingParameters(t *testing.T) {
 	}
 
 	if !bytes.Equal(bb, ba) {
-
 		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
+	}
 
+}
+
+func TestForwardingParametersIEInFAR(t *testing.T) {
+	d := &DestinationInterface{
+		InterfaceValue: DestinationInterfaceAccess,
+	}
+	networkInstance := util_3gpp.Dnn("internet")
+
+	ohcd := uint8(1)
+	teid := uint32(100)
+	ip4address := net.ParseIP("8.8.8.8")
+	ohc := NewOuterHeaderCreation(ohcd, teid, ip4address, nil, 0)
+
+	fp := ForwardingParametersIEInFAR{
+		DestinationInterface: d,
+		NetworkInstance:      &networkInstance,
+		OuterHeaderCreation:  ohc,
+	}
+
+	b, err := fp.Serialize()
+	if err != nil {
+		t.Fatalf("Error in serializing %+v", err)
+	}
+	ba := []byte{0x00, 0x2a, 0x00, 0x01, 0x00,
+		0x00, 0x16, 0x00, 0x09, 0x08, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x65, 0x74,
+		0x00, 0x54, 0x00, 0x09, 0x01, 0x00, 0x00, 0x00, 0x64, 0x08, 0x08, 0x08, 0x08}
+
+	if !bytes.Equal(b, ba) {
+		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, b)
 	}
 
 }

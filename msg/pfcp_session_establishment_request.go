@@ -13,8 +13,8 @@ type PFCPSessionEstablishmentRequest struct {
 	Header                   *PFCPHeader
 	NodeID                   *ie.InformationElement
 	CPFSEID                  *ie.InformationElement
-	CreatePDR                *ie.InformationElement
-	CreateFAR                *ie.InformationElement
+	CreatePDR                *ie.InformationElements
+	CreateFAR                *ie.InformationElements
 	CreateURR                *ie.InformationElement
 	CreateQER                *ie.InformationElement
 	CreateBAR                *ie.InformationElement
@@ -26,7 +26,7 @@ type PFCPSessionEstablishmentRequest struct {
 }
 
 //NewPFCPSessionEstablishmentRequest creates new PFCPSessionEstablishmentRequst
-func NewPFCPSessionEstablishmentRequest(h *PFCPHeader, n, cpfseid, createPDR, createFAR, createURR, createQER, createBAR, createTrafficEndpoint, pdnType, userPlaneInactivityTimer, userID, traceInformation *ie.InformationElement) PFCPSessionEstablishmentRequest {
+func NewPFCPSessionEstablishmentRequest(h *PFCPHeader, n, cpfseid *ie.InformationElement, createPDR, createFAR *ie.InformationElements, createURR, createQER, createBAR, createTrafficEndpoint, pdnType, userPlaneInactivityTimer, userID, traceInformation *ie.InformationElement) PFCPSessionEstablishmentRequest {
 	//if n.Type == ie.IEReserved || r.Type == ie.IEReserved {
 	//	return nil
 	//}
@@ -56,44 +56,72 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 	}
 
 	dataLength := sr.Len()
-	output := make([]byte, dataLength)
 	pfcpend := uint16(PFCPBasicHeaderLength) + PFCPMessageSize
+	output := make([]byte, pfcpend)
 	copy(output[:pfcpend], sr.Header.Serialize())
 
-	nb, _ := sr.NodeID.Serialize()
-	nodeIDEnd := pfcpend + ie.IEBasicHeaderSize + sr.NodeID.Len()
-	copy(output[pfcpend:nodeIDEnd], nb)
+	nb, err := sr.NodeID.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	output = append(output, nb...)
 
-	seid, _ := sr.CPFSEID.Serialize()
-	seidEnd := nodeIDEnd + ie.IEBasicHeaderSize + sr.CPFSEID.Len()
-	copy(output[nodeIDEnd:seidEnd], seid)
+	seid, err := sr.CPFSEID.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	output = append(output, seid...)
 
-	createpdr, _ := sr.CreatePDR.Serialize()
-	createpdrEnd := seidEnd + ie.IEBasicHeaderSize + sr.CreatePDR.Len()
-	copy(output[seidEnd:createpdrEnd], createpdr)
+	for _, pdrie := range *sr.CreatePDR {
+		createpdr, err := pdrie.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, createpdr...)
+	}
 
-	createfar, _ := sr.CreateFAR.Serialize()
-	createfarEnd := createpdrEnd + ie.IEBasicHeaderSize + sr.CreateFAR.Len()
-	copy(output[createpdrEnd:createfarEnd], createfar)
-	createUrrEnd := createfarEnd
+	for _, farie := range *sr.CreateFAR {
+		createfar, err := farie.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, createfar...)
+	}
 
-	if sr.CreateURR != nil {
-		createURR, _ := sr.CreateURR.Serialize()
-		createUrrEnd += ie.IEBasicHeaderSize + sr.CreateURR.Len()
-		copy(output[createfarEnd:createUrrEnd], createURR)
+	if sr.CreateURR != nil && sr.CreateURR.Type !=ie.IEReserved {
+		createURR, err := sr.CreateURR.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, createURR...)
 	}
 
 	if sr.CreateQER != nil {
 		createQER, _ := sr.CreateQER.Serialize()
-		createQEREnd := createUrrEnd + ie.IEBasicHeaderSize + sr.CreateQER.Len()
-		copy(output[createUrrEnd:createQEREnd], createQER)
-		createUrrEnd = createQEREnd
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, createQER...)
 	}
 
 	if sr.UserPlaneInactivityTimer != nil && sr.UserPlaneInactivityTimer.Type != ie.IEReserved {
-		upInactivityTimer, _ := sr.UserPlaneInactivityTimer.Serialize()
-		copy(output[createUrrEnd:], upInactivityTimer)
+		upInactivityTimer, err := sr.UserPlaneInactivityTimer.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, upInactivityTimer...)
 	}
+	if sr.PDNType != nil && sr.PDNType.Type != ie.IEReserved {
+		pdnType, err := sr.PDNType.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, pdnType...)
+	}
+	/*if int(dataLength)+PFCPBasicHeaderLength != len(output) {
+	  return nil, fmt.Errorf("Length is wrong in the message")
+	}
+	*/
 	return output, nil
 	//TODO: remaining to be added
 
@@ -102,7 +130,6 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 func ProcessPFCPSessionEstablishmentRequest(m *PFCPMessage, nodeIP net.IP, seid uint64) ([]byte, error) {
 	pfcpMessage, err := FromPFCPMessage(m)
 	if err != nil {
-		fmt.Printf("pfcpSessionER:Header %+v\n", pfcpMessage)
 		return nil, err
 	}
 	pfcpSessionEstablishmentRequest, ok := pfcpMessage.(PFCPSessionEstablishmentRequest)
@@ -142,10 +169,13 @@ func ProcessPFCPSessionEstablishmentRequest(m *PFCPMessage, nodeIP net.IP, seid 
 	)
 	length = length + ie.IEBasicHeaderSize + upfseid.Len()
 
-	cPDR, err := ie.CreatePDRIEsFromBytes(pfcpSessionEstablishmentRequest.CreatePDR.Data.Serialize())
+	var cPDR *ie.CreatePDRWithIE    
+	for _,ieCreatePDR :=range * pfcpSessionEstablishmentRequest.CreatePDR {
+	cPDR, err = ie.CreatePDRIEsFromBytes(ieCreatePDR.Data.Serialize())
 	if err != nil {
 		return nil, err
 	}
+        }
 
 	b, err := cPDR.PDRID.Serialize()
 	if err != nil {

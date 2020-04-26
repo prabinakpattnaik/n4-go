@@ -26,15 +26,12 @@ func (hr Heartbeat) Serialize() ([]byte, error) {
 	pfcpend := uint16(PFCPBasicHeaderLength) + PFCPBasicMessageSize
 	copy(output[:pfcpend], hr.Header.Serialize())
 	copy(output[pfcpend:], b)
-
 	return output, nil
 
 }
 
 func (hr Heartbeat) Len() uint16 {
-
 	return uint16(PFCPBasicHeaderLength) + hr.Header.MessageLength
-
 }
 
 func (hr Heartbeat) Type() PFCPType {

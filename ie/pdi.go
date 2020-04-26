@@ -2,102 +2,101 @@ package ie
 
 import (
 	"fmt"
+
+	"bitbucket.org/sothy5/n4-go/util/util_3gpp"
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
 type PDI struct {
-	SourceInterface               *InformationElement
-	LocalFTEID                    *InformationElement
-	NetworkInstance               *InformationElement
-	UEIPAddress                   *InformationElement
-	TrafficEndpointID             *InformationElement
-	SDFFilter                     *InformationElement
-	ApplicationID                 *InformationElement
-	EthernetPDUSessionInformation *InformationElement
-	EthernetPacketFilter          *InformationElement
-	QFI                           *InformationElement
-	FramedRoute                   *InformationElement
-	FramedRouting                 *InformationElement
-	FramedIPv6Route               *InformationElement
+	SourceInterface *SourceInterface `tlv:"20"`
+	LocalFTEID      *FTEID           `tlv:"21"`
+	NetworkInstance *util_3gpp.Dnn   `tlv:"22"`
+	UEIPAddress     *UEIPAddress     `tlv:"93"`
+	//TrafficEndpointID             *TrafficEndpointID             `tlv:"131"`
+	SDFFilter       *SDFFilter                     `tlv:"23"`
+	//ApplicationID                 *ApplicationID                 `tlv:"24"`
+	//EthernetPDUSessionInformation *EthernetPDUSessionInformation `tlv:"142"`
+	//EthernetPacketFilter          *EthernetPacketFilter          `tlv:"132"`
+	//QFI                           *QFI                           `tlv:"124"`
+	//FramedRoute                   *FramedRoute                   `tlv:"153"`
+	//FramedRouting                 *FramedRouting                 `tlv:"154"`
+	//FramedIPv6Route               *FramedIPv6Route               `tlv:"155"`
 }
 
-func NewPDI(sourceInterface, localFTEID, networkInstance, ueIPAddress, trafficEndpointID, sdffilter, applicaitonID, ethernetPDUSessionInformation, ethernetPacketFilter, qfi, framedRoute, frameRouting, frameIPv6Route *InformationElement) *PDI {
-	return &PDI{
-		SourceInterface:               sourceInterface,
-		LocalFTEID:                    localFTEID,
-		NetworkInstance:               networkInstance,
-		UEIPAddress:                   ueIPAddress,
-		TrafficEndpointID:             trafficEndpointID,
-		SDFFilter:                     sdffilter,
-		ApplicationID:                 applicaitonID,
-		EthernetPDUSessionInformation: ethernetPDUSessionInformation,
-		EthernetPacketFilter:          ethernetPacketFilter,
-		QFI:                           qfi,
-		FramedRoute:                   framedRoute,
-		FramedRouting:                 frameRouting,
-		FramedIPv6Route:               frameIPv6Route,
+func (p *PDI) Serialize() ([]byte, error) {
+	if p.SourceInterface == nil {
+		return nil, fmt.Errorf("No valid PDRID")
 	}
 
-}
+	si := NewInformationElement(
+		IESourceInterface,
+		0,
+		dt.OctetString(p.SourceInterface.InterfaceValue),
+	)
+	b, _ := si.Serialize()
 
-func (p PDI) Serialize() ([]byte, error) {
-	if p.SourceInterface == nil || p.SourceInterface.Type == IEReserved {
-		return nil, fmt.Errorf("CreateFAR does not have valid FARID")
-	}
-	b, err := p.SourceInterface.Serialize()
-	if err != nil {
-		return nil, fmt.Errorf("FARID serialization error")
-	}
-
-	if p.LocalFTEID != nil && p.LocalFTEID.Type != IEReserved {
+	if p.LocalFTEID != nil {
 		b1, err := p.LocalFTEID.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("LocalFTEID serialization error")
+		if err == nil {
+			lFTEID := NewInformationElement(
+				IEFTEID,
+				0,
+				dt.OctetString(b1),
+			)
+			b1, err := lFTEID.Serialize()
+			if err == nil {
+				b = append(b, b1...)
+			}
 		}
-		b = append(b, b1...)
 	}
 
-	if p.NetworkInstance != nil && p.NetworkInstance.Type != IEReserved {
+	if p.NetworkInstance != nil {
 		b1, err := p.NetworkInstance.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("NetworkInstance serialization error")
+		if err == nil {
+			networkInstance := NewInformationElement(
+				IENetworkInstance,
+				0,
+				dt.OctetString(b1),
+			)
+			b1, err = networkInstance.Serialize()
+			fmt.Printf("data [%x]\n", b1)
+			if err == nil {
+				b = append(b, b1...)
+			}
 		}
-		b = append(b, b1...)
 	}
 
-	if p.UEIPAddress != nil && p.UEIPAddress.Type != IEReserved {
+	if p.UEIPAddress != nil {
 		b1, err := p.UEIPAddress.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("UEIPAddress serialization error")
+		if err == nil {
+			ueIPaddress := NewInformationElement(
+				IEUEIPaddress,
+				0,
+				dt.OctetString(b1),
+			)
+			b1, err = ueIPaddress.Serialize()
+			if err == nil {
+				b = append(b, b1...)
+			}
 		}
-		b = append(b, b1...)
 	}
 
-	if p.TrafficEndpointID != nil && p.TrafficEndpointID.Type != IEReserved {
-		b1, err := p.TrafficEndpointID.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("TrafficEndpointID serialization error")
-		}
-		b = append(b, b1...)
+	if p.SDFFilter !=nil {
+	    b1, err := p.SDFFilter.Serialize()
+	    if err != nil{
+	    return nil, err
+	    }
+	    sdfFilter := NewInformationElement(
+	            IESDFFilter,
+		    0,
+		    dt.OctetString(b1),
+	    )
+	    b1,err = sdfFilter.Serialize()
+	    if err != nil {
+	    return nil, err
+	    }
+	    b=append(b,b1...)
 	}
-
-	if p.SDFFilter != nil && p.SDFFilter.Type != IEReserved {
-		b1, err := p.SDFFilter.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("SDFFilter serialization error")
-		}
-		b = append(b, b1...)
-	}
-
-	if p.ApplicationID != nil && p.ApplicationID.Type != IEReserved {
-		b1, err := p.ApplicationID.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("ApplicationID serialization error")
-		}
-		b = append(b, b1...)
-	}
-
-	//TODO remaining to be filled
 
 	return b, nil
-
 }

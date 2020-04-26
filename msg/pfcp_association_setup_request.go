@@ -50,6 +50,8 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 	var uis ie.InformationElements
 	var reportType ie.InformationElement
 	var usageReports ie.InformationElements
+	var createPDRs ie.InformationElements
+	var createFARs ie.InformationElements
 
 	for _, informationElement := range m.IEs {
 		switch informationElement.Type {
@@ -69,8 +71,10 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 			cpfseid = informationElement
 		case ie.IECreatePDR:
 			cPDR = informationElement
+			createPDRs=append(createPDRs,cPDR)
 		case ie.IECreateFAR:
 			cFAR = informationElement
+			createFARs=append(createFARs,cFAR)
 		case ie.IECreateURR:
 			cURR = informationElement
 		case ie.IECreateQER:
@@ -116,13 +120,13 @@ func FromPFCPMessage(m *PFCPMessage) (PFCP, error) {
 		pfcpAssociationSetupResponse := NewPFCPAssociationSetupResponse(m.Header, &n, &cause, &r, &u, &c, uis)
 		return pfcpAssociationSetupResponse, nil
 	case SessionEstablishmentRequestType:
-		pfcpSessionEstablishmentRequest := NewPFCPSessionEstablishmentRequest(m.Header, &n, &cpfseid, &cPDR, &cFAR, &cURR, &cQER, &cBAR, nil, nil, nil, nil, nil)
+		pfcpSessionEstablishmentRequest := NewPFCPSessionEstablishmentRequest(m.Header, &n, &cpfseid, &createPDRs, &createFARs, &cURR, &cQER, &cBAR, nil, nil, nil, nil, nil)
 		return pfcpSessionEstablishmentRequest, nil
 	case SessionEstablishmentResponseType:
 		pfcpSessionEstablishmentResponse := NewPFCPSessionEstablishmentResponse(m.Header, &n, &cause, &offending, &cpfseid, &createdpdr, nil, nil, nil, nil)
 		return pfcpSessionEstablishmentResponse, nil
 	case SessionModificationRequestType:
-		pfcpSessionModificationRequest := NewPFCPSessionModificationRequest(m.Header, &cpfseid, &rPDR, &rFAR, &rURR, &rQER, &rBAR, &rTE, &cPDR, &cFAR, &cURR, &cQER, &cBAR, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		pfcpSessionModificationRequest := NewPFCPSessionModificationRequest(m.Header, &cpfseid, &rPDR, &rFAR, &rURR, &rQER, &rBAR, &rTE, &createPDRs, &createFARs, &cURR, &cQER, &cBAR, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		return pfcpSessionModificationRequest, nil
 	case SessionModificationResponseType:
 		pfcpSessionModificationResponse := NewPFCPSessionModificationResponse(m.Header, &cause, &offending, &createdpdr)

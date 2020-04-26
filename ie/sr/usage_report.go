@@ -1,29 +1,30 @@
 package sr
 
 import (
-	"fmt"
+	"encoding/binary"
+	"time"
 
 	"bitbucket.org/sothy5/n4-go/ie"
 )
 
-// DownlinkDataReport
+// UsageReport
 type UsageReport struct {
-	URRID                           *ie.InformationElement
-	URSEQN                          *ie.InformationElement
-	UsageReportTrigger              *ie.InformationElement
-	StartTime                       *ie.InformationElement
-	EndTime                         *ie.InformationElement
-	VolumeMeasurement               *ie.InformationElement
-	DurationMeasurement             *ie.InformationElement
-	ApplicationDetectionInformation *ie.InformationElement
-	UEIPAddress                     *ie.InformationElement
-	NetworkInstance                 *ie.InformationElement
-	TimeofFirstPacket               *ie.InformationElement
-	TimeofLastPacket                *ie.InformationElement
-	UsageInformation                *ie.InformationElement
-	QueryURRReference               *ie.InformationElement
-	EventTimeStamp                  *ie.InformationElement
-	EthernetTrafficInformation      *ie.InformationElement
+	URRID               *ie.URRID
+	URSEQN              *ie.URSEQN
+	UsageReportTrigger  *ie.UsageReportTriggerData
+	StartTime           *time.Time
+	EndTime             *time.Time
+	VolumeMeasurement   *ie.Volume
+	DurationMeasurement *uint32
+	//ApplicationDetectionInformation *ie.InformationElement
+	UEIPAddress       *ie.UEIPAddress
+	NetworkInstance   []byte
+	TimeofFirstPacket *time.Time
+	TimeofLastPacket  *time.Time
+	UsageInformation  []byte
+	//QueryURRReference               *ie.InformationElement
+	//EventTimeStamp                  *ie.InformationElement
+	//EthernetTrafficInformation      *ie.InformationElement
 }
 
 func (u *UsageReport) UsageReportFromByte(b []byte) error {
@@ -35,21 +36,39 @@ func (u *UsageReport) UsageReportFromByte(b []byte) error {
 	for _, inel := range ies {
 		switch inel.Type {
 		case ie.IEURRID:
-			u.URRID = &inel
+			urrID := binary.BigEndian.Uint32(inel.Data.Serialize())
+			uid := ie.URRID(urrID)
+			u.URRID = &uid
 		case ie.IEUESEQN:
-			u.URSEQN = &inel
+			urseqn := binary.BigEndian.Uint32(inel.Data.Serialize())
+			urs := ie.URSEQN(urseqn)
+			u.URSEQN = &urs
 		case ie.IEUsageReportTrigger:
-			u.UsageReportTrigger = &inel
+			ur := ie.UsageReportTriggerData(inel.Data.Serialize())
+			u.UsageReportTrigger = &ur
 		case ie.IEStartTime:
-			u.StartTime = &inel
+			b := inel.Data.Serialize()
+			if len(b) == 4 {
+				st := time.Unix(int64(binary.BigEndian.Uint32(b))-ie.RFC868offset, 0)
+				u.StartTime = &st
+			}
 		case ie.IEEndTime:
-			u.EndTime = &inel
+			b := inel.Data.Serialize()
+			if len(b) == 4 {
+				et := time.Unix(int64(binary.BigEndian.Uint32(b))-ie.RFC868offset, 0)
+				u.EndTime = &et
+			}
 		case ie.IEVolumeMeasurement:
-			u.VolumeMeasurement = &inel
+			var vol ie.Volume
+			err := vol.VolumeFromBytes(inel.Data.Serialize())
+			if err == nil {
+				u.VolumeMeasurement = &vol
+			}
 		case ie.IEDurationMeasurement:
-			u.DurationMeasurement = &inel
+			dm := binary.BigEndian.Uint32(b)
+			u.DurationMeasurement = &dm
 		default:
-			return fmt.Errorf("IEs are not treated")
+			//fmt.Errorf("IEs are not treated")
 
 		}
 

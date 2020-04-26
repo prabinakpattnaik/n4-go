@@ -2,108 +2,69 @@ package ie
 
 import (
 	"fmt"
+
+	"bitbucket.org/sothy5/n4-go/util/util_3gpp"
+	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
-type ForwardingParameters struct {
-	DestinationInterface    *InformationElement
-	NetworkInstance         *InformationElement
-	RedirectInformation     *InformationElement
-	OuterHeaderCreation     *InformationElement
-	TransportLevelMarking   *InformationElement
-	ForwardingPolicy        *InformationElement
-	HeaderEnrichment        *InformationElement
-	LinkedTrafficEndpointID *InformationElement
-	Proxying                *InformationElement
+type ForwardingParametersIEInFAR struct {
+	DestinationInterface *DestinationInterface `tlv:"42"`
+	NetworkInstance      *util_3gpp.Dnn        `tlv:"22"`
+	RedirectInformation  *RedirectInformation  `tlv:"38"`
+	OuterHeaderCreation  *OuterHeaderCreation  `tlv:"84"`
+	//TransportLevelMarking   *TransportLevelMarking `tlv:"30"`
+	//ForwardingPolicy        *ForwardingPolicy      `tlv:"41"`
+	//HeaderEnrichment        *HeaderEnrichment      `tlv:"98"`
+	//LinkedTrafficEndpointID *TrafficEndpointID     `tlv:"131"`
+	//Proxying                *Proxying              `tlv:"137"`
 }
 
-func NewForwardingParameters(d, n, r, o, t, f, h, l, p *InformationElement) *ForwardingParameters {
-	return &ForwardingParameters{
-		DestinationInterface:    d,
-		NetworkInstance:         n,
-		RedirectInformation:     r,
-		OuterHeaderCreation:     o,
-		TransportLevelMarking:   t,
-		ForwardingPolicy:        f,
-		HeaderEnrichment:        h,
-		LinkedTrafficEndpointID: l,
-		Proxying:                p,
+func (f *ForwardingParametersIEInFAR) Serialize() ([]byte, error) {
+	if f.DestinationInterface == nil {
+		return nil, fmt.Errorf("Mandatory field missing in ForwardfingParameters")
+	}
+	var b []byte
+	d := NewInformationElement(
+		IEDestinationInterface,
+		0,
+		dt.OctetString([]byte{f.DestinationInterface.InterfaceValue}),
+	)
+	b1, err := d.Serialize()
+	if err == nil {
+		b = append(b, b1...)
 	}
 
-}
-
-func (f ForwardingParameters) Serialize() ([]byte, error) {
-	if f.DestinationInterface == nil || f.DestinationInterface.Type == IEReserved {
-		return nil, fmt.Errorf("ForwardingParameters does not have valid DestionationInterface")
-	}
-	b, err := f.DestinationInterface.Serialize()
-	if err != nil {
-		return nil, fmt.Errorf("DestinationInterface serialization error")
-	}
-
-	if f.NetworkInstance != nil && f.NetworkInstance.Type != IEReserved {
+	if f.NetworkInstance != nil {
 		b1, err := f.NetworkInstance.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("NetworkInstance serialization error")
+		if err == nil {
+			networkInstance := NewInformationElement(
+				IENetworkInstance,
+				0,
+				dt.OctetString(b1),
+			)
+			b1, err = networkInstance.Serialize()
+			if err == nil {
+				b = append(b, b1...)
+			}
 		}
-		b = append(b, b1...)
 	}
 
-	if f.RedirectInformation != nil && f.RedirectInformation.Type != IEReserved {
-		b1, err := f.RedirectInformation.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("RedirectInformation serialization error")
-		}
-		b = append(b, b1...)
-	}
+	//TODO RedirectInformation. Not included.
 
-	if f.OuterHeaderCreation != nil && f.OuterHeaderCreation.Type != IEReserved {
-		b1, err := f.OuterHeaderCreation.Serialize()
+	if f.OuterHeaderCreation != nil {
+		b1, err = f.OuterHeaderCreation.Serialize()
 		if err != nil {
-			return nil, fmt.Errorf("OuterHeaderCreation serialization error")
+			return nil, err
 		}
-		b = append(b, b1...)
-	}
-
-	if f.TransportLevelMarking != nil && f.TransportLevelMarking.Type != IEReserved {
-		b1, err := f.TransportLevelMarking.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("TransportLevelMarking serialization error")
+		ieOHC := NewInformationElement(
+			IEOuterHeaderCreation,
+			0,
+			dt.OctetString(b1),
+		)
+		b1, err = ieOHC.Serialize()
+		if err == nil {
+			b = append(b, b1...)
 		}
-		b = append(b, b1...)
 	}
-
-	if f.ForwardingPolicy != nil && f.ForwardingPolicy.Type != IEReserved {
-		b1, err := f.ForwardingPolicy.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("ForwardingPolicy serialization error")
-		}
-		b = append(b, b1...)
-	}
-
-	if f.HeaderEnrichment != nil && f.HeaderEnrichment.Type != IEReserved {
-		b1, err := f.HeaderEnrichment.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("HeaderEnrichment serialization error")
-		}
-		b = append(b, b1...)
-	}
-
-	if f.LinkedTrafficEndpointID != nil && f.LinkedTrafficEndpointID.Type != IEReserved {
-		b1, err := f.LinkedTrafficEndpointID.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("LinkedTrafficEndpointID serialization error")
-		}
-		b = append(b, b1...)
-	}
-
-	if f.Proxying != nil && f.Proxying.Type != IEReserved {
-		b1, err := f.Proxying.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("Proxying serialization error")
-		}
-		b = append(b, b1...)
-	}
-
 	return b, nil
-
 }

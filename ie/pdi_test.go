@@ -5,9 +5,10 @@ import (
 	"net"
 	"testing"
 
-	dt "github.com/fiorix/go-diameter/diam/datatype"
+	"bitbucket.org/sothy5/n4-go/util/util_3gpp"
 )
 
+/*
 func TestNewPDI(t *testing.T) {
 	//included: source interface, Local F-TEID, Network Instance
 	// not included: UE IP address, Traffic Endpoint ID, SDF Filter, Application ID
@@ -84,7 +85,9 @@ func TestNewPDI(t *testing.T) {
 
 	t.Log(i)
 }
+*/
 
+/*
 func TestNewPDIStruct(t *testing.T) {
 	sourceinterface := uint8(1)
 
@@ -132,5 +135,36 @@ func TestNewPDIStruct(t *testing.T) {
 	if !bytes.Equal(bb, ba) {
 
 		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, bb)
+	}
+}
+*/
+
+func TestNewPDIStructv1(t *testing.T) {
+	si := &SourceInterface{
+		InterfaceValue: SourceInterfaceAccess,
+	}
+
+	fteid := NewFTEID(true, false, false, false, 255, net.IPv4(192, 168, 1, 101), nil, 0)
+	dnn := util_3gpp.Dnn("internet")
+	ip := net.ParseIP("192.0.2.1")
+	ueIPAddress := NewUEIPAddress(false, true, true, false, ip, nil, 0)
+
+	pdi := PDI{
+		SourceInterface: si,
+		LocalFTEID:      fteid,
+		NetworkInstance: &dnn,
+		UEIPAddress:     ueIPAddress,
+	}
+	p, err := pdi.Serialize()
+	if err != nil {
+		t.Fatalf("Error in serializing %+v", err)
+	}
+	ba := []byte{0x00, 0x02, 0x00, 0x28,
+		0x00, 0x14, 0x00, 0x01, 0x00,
+		0x00, 0x15, 0x00, 0x09, 0x01, 0x00, 0x00, 0x00, 0xFF, 0xC0, 0xA8, 0x1, 0x65,
+		0x00, 0x16, 0x00, 0x09, 0x08, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x65, 0x74,
+		0x00, 0x5d, 0x00, 0x05, 0x06, 0xC0, 0x00, 0x02, 0x01}
+	if !bytes.Equal(ba, p) {
+		t.Fatalf("unexpected value of PDI IE. want [%x}, have [%x]", ba, p)
 	}
 }

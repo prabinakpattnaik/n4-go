@@ -6,18 +6,17 @@ import (
 	"os"
 	"time"
 
-	"bitbucket.org/sothy5/n4-go/ie/bar"
-
 	//"bitbucket.org/sothy5/n4-go/ie/qer"
-	"bitbucket.org/sothy5/n4-go/ie/urr"
+	//"bitbucket.org/sothy5/n4-go/ie/urr"
 	"bitbucket.org/sothy5/n4-go/msg"
 
 	"bitbucket.org/sothy5/n4-go/util/se"
 
-	setting "bitbucket.org/sothy5/n4-go/client/internal/helper"
+        setting "bitbucket.org/sothy5/n4-go/client/internal/helper"
 	"bitbucket.org/sothy5/n4-go/client/internal/server_wrap"
 	"bitbucket.org/sothy5/n4-go/client/internal/session"
-	"bitbucket.org/sothy5/n4-go/client/internal/usage_report"
+
+	//"bitbucket.org/sothy5/n4-go/client/internal/usage_report"
 
 	//"bitbucket.org/sothy5/n4-go/client/internal/usage_report"
 	"bitbucket.org/sothy5/n4-go/ie"
@@ -359,12 +358,24 @@ func run(c *cli.Context) error {
 		var pfcpSessionEstablishmentRequest *msg.PFCPSessionEstablishmentRequest
 		var err error
 
-		// Time Threshold based URR is created.
-		m := urr.NewMeasurementMethod(true, false, false)
+		/*
 
-		r := urr.NewReportingTriggers(false, false, false, false, false, false, false, false, false, true, false, false, false, false)
-		//2*60s for Time Threshold
-		createURR, err := usage_report.NewCreateURR(1, m, r, 0, 120)
+			// Time Threshold based URR is created.
+			m := urr.NewMeasurementMethod(true, false, false)
+
+			/* Time Threshold  */
+		/*
+			r := urr.NewReportingTriggers(false, false, true, false, false, false, false, false, false, false, false, false, false, false)
+			//2*60s for Time Threshold
+			createURR, err := usage_report.NewCreateURR(1, m, r, 0, 120)
+		*/
+		/*
+			r := urr.NewReportingTriggers(false, false, false, false, false, false, false, false, false, true, false, false, false, false)
+			//2*60s for Time Threshold
+			createURR, err := usage_report.NewCreateURR(1, m, r, 0, 120)
+
+
+		*/
 
 		//QER
 		/*
@@ -379,13 +390,16 @@ func run(c *cli.Context) error {
 				continue
 			}
 		*/
+
 		if ftup {
+			//fteid := ie.NewFTEID(true, false, true, false, 0, nil, nil, 0)
 			fteid, _ := setting.Assign_tunnelID(nil, 0)
-			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, ie.SGiN6LAN, nil, createURR, 1, nil, 1, ueIPAddress)
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, ie.SGiN6LAN, nil, nil, 1, nil, 1, ueIPAddress)
 		} else {
+			//fteid := ie.NewFTEID(true, false, false, false, teid, upIPRI.IPv4Address, nil, 0)
 			fteid, _ := setting.Assign_tunnelID(upIPRI.IPv4Address, teid)
 			log.WithFields(log.Fields{"Ftied V4": upIPRI.IPv4Address}).Info("FTEID IPv4 address")
-			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, ie.SGiN6LAN, upIPRI.NetworkInstance, createURR, 1, nil, 1, ueIPAddress)
+			pfcpSessionEstablishmentRequest, err = session.CreateSession(seid, sequenceNumber, nodeIP, seid, 1, 1, 0, fteid, 2, ie.SGiN6LAN, upIPRI.NetworkInstance, nil, 1, nil, 1, ueIPAddress)
 		}
 		if err != nil {
 			log.WithError(err).Error("error in pfcpSessionEstablishmentRequest")
@@ -425,19 +439,21 @@ func run(c *cli.Context) error {
 			if seid == 0 {
 				seid = srr.SRequest.GetHeader().SessionEndpointIdentifier
 			}
+			/*
+				// Forward ->Buffering
+				barId := 1
+				var pcv bar.PacketCountvalue = 100
+				createBAR, err := bar.NewCreateBAR(uint8(barId), pcv)
+				if err != nil {
+					log.WithError(err).Error("error in CreateBAR")
+					continue
+				}
+			*/
 
-			// Forward ->Buffering
-			barId := 1
-			var pcv bar.PacketCountvalue = 100
-			createBAR, err := bar.NewCreateBAR(uint8(barId), pcv)
-			if err != nil {
-				log.WithError(err).Error("error in CreateBAR")
-				continue
-			}
 			if ftup {
-				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.SGiN6LAN, ueIPAddress, 0, rIPAddress, ie.FORW, ie.Access, nil, createBAR)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.SGiN6LAN, ueIPAddress, 0, rIPAddress, ie.FORW, ie.Access, nil, nil)
 			} else {
-				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.SGiN6LAN, ueIPAddress, rteid, rIPAddress, ie.FORW, ie.Access, upIPRI.NetworkInstance, createBAR)
+				smr, err = session.ModifySession(seid, sequenceNumber, 2, 2, ie.SGiN6LAN, ueIPAddress, rteid, rIPAddress, ie.FORW, ie.Access, upIPRI.NetworkInstance, nil)
 			}
 
 			if err != nil {

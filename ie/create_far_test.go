@@ -128,3 +128,27 @@ func TestCreateFARStruct(t *testing.T) {
 	}
 
 }
+
+func TestCreateFARNewStruct(t *testing.T) {
+	farId := FARID{
+		FarIdValue: 01,
+	}
+	aa := ApplyAction{
+		Forw: true,
+	}
+	createFAR := CreateFAR{
+		FarID:       &farId,
+		ApplyAction: &aa,
+	}
+	b, err := createFAR.Serialize()
+	if err != nil {
+		t.Fatalf("Error in serializing %+v", err)
+	}
+	ba := []byte{0x00, 0x6c, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01,
+		0x00, 0x2C, 0x00, 0x01, 0x02,
+	}
+	if !bytes.Equal(b, ba) {
+		t.Fatalf("unexpected value. want [%x}, have [%x]", ba, b)
+	}
+
+}

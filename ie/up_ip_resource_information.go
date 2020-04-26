@@ -2,6 +2,8 @@ package ie
 
 import (
 	"net"
+
+	"bitbucket.org/sothy5/n4-go/util/util_3gpp"
 )
 
 type UPIPResourceInformation struct {
@@ -13,11 +15,11 @@ type UPIPResourceInformation struct {
 	TEIDRange       uint8
 	IPv4Address     net.IP
 	IPv6Address     net.IP
-	NetworkInstance []byte
+	NetworkInstance util_3gpp.Dnn
 	SourceInterface uint8
 }
 
-func NewUPIPResourceInformation(v4, v6 bool, teidri uint8, assoni, assosi bool, teidrange uint8, ipv4address, ipv6address net.IP, networkinstance []byte, sourceinterface uint8) *UPIPResourceInformation {
+func NewUPIPResourceInformation(v4, v6 bool, teidri uint8, assoni, assosi bool, teidrange uint8, ipv4address, ipv6address net.IP, networkinstance util_3gpp.Dnn, sourceinterface uint8) *UPIPResourceInformation {
 	return &UPIPResourceInformation{
 		V4:              v4,
 		V6:              v6,
@@ -75,6 +77,8 @@ func NewUPIPResourceInformationFromByte(length uint16, input []byte) *UPIPResour
 			}
 		}
 	}
+	var dnn util_3gpp.Dnn
+	dnn.DnnFromBinary(ni)
 
 	//TODO:source interface details missing
 
@@ -87,7 +91,7 @@ func NewUPIPResourceInformationFromByte(length uint16, input []byte) *UPIPResour
 		TEIDRange:       teidRange,
 		IPv4Address:     ip4address,
 		IPv6Address:     ip6address,
-		NetworkInstance: ni,
+		NetworkInstance: dnn,
 	}
 
 }

@@ -8,8 +8,8 @@ type ReportType struct {
 	UPIR bool
 }
 
-func NewReportType(d, u, e, up bool) ReportType {
-	return ReportType{
+func NewReportType(d, u, e, up bool) *ReportType {
+	return &ReportType{
 		DLDR: d,
 		USAR: u,
 		ERIR: e,
@@ -37,7 +37,7 @@ func (r ReportType) Serialize() byte {
 	return b
 }
 
-func NewReportTypeFromByte(b byte) ReportType {
+func NewReportTypeFromByte(b byte) *ReportType {
 	d := ((b & 0x01) == 1)
 	u := ((b & 0x02) == 2)
 	e := ((b & 0x04) == 4)
