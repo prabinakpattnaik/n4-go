@@ -5,6 +5,7 @@ import (
 
 	"github.com/prabinakpattnaik/n4-go/ie"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
+	log "github.com/sirupsen/logrus"
 )
 
 //PFCPSessionModificationRequest
@@ -144,7 +145,7 @@ func (smr PFCPSessionModificationRequest) Serialize() ([]byte, error) {
 		}
 		b = append(b, cfar...)
 	}
-	*/
+	
 	for _, pdrie := range *smr.CreatePDR {
                 createpdr, err := pdrie.Serialize()
                 if err != nil {
@@ -161,7 +162,7 @@ func (smr PFCPSessionModificationRequest) Serialize() ([]byte, error) {
                 }
                 b = append(b, createfar...)
         }
-
+*/
 
 	if smr.CreateURR != nil {
 		curr, err := smr.CreateURR.Serialize()
@@ -194,11 +195,55 @@ func (smr PFCPSessionModificationRequest) Serialize() ([]byte, error) {
 		}
 		b = append(b, cte...)
 	}
+	if smr.UpdatePDR != nil {
+		log.WithFields(log.Fields{"data": smr.UpdatePDR}).Info("received UpdatePDR")
+                updr , err := smr.UpdatePDR.Serialize()
+		log.WithFields(log.Fields{"data": updr}).Info("serialization UpdatePDR")
+                if err != nil {
+			log.WithError(err).Error("error in UpdatePDR serialization")
+                        return nil, err
+                }
+                b = append(b, updr...)
+        }
+
+        if smr.UpdateFAR != nil {
+                ufar, err := smr.UpdateFAR.Serialize()
+                if err != nil {
+			log.WithError(err).Error("error in UpdateFAR serialization")
+                        return nil, err
+                }
+                b = append(b, ufar...)
+        }
+
+        if smr.UpdateURR != nil {
+                uurr, err := smr.UpdateURR.Serialize()
+                if err != nil {
+                        return nil, err
+                }
+                b = append(b, uurr...)
+        }
+	if smr.UpdateQER != nil {
+                uqer, err := smr.UpdateQER.Serialize()
+                if err != nil {
+                        return nil, err
+                }
+                b = append(b, uqer...)
+        }
+
+        if smr.UpdateBAR != nil {
+                ubar, err := smr.UpdateBAR.Serialize()
+                if err != nil {
+                        return nil, err
+                }
+                b = append(b, ubar...)
+        }
 
 	output=append(output, b...)
 	if uint16(len(output))==messageLength {
 		return output, nil
 	}else {
+	//fmt.Printf("left length is %u\n", uint16(len(output)))
+	//fmt.Printf("messageLength length is %u\n", messageLength)
 	return nil, fmt.Errorf("Error in serialization of PFCP Session Modification Request")
 }
 

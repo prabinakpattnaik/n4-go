@@ -15,9 +15,11 @@ type ReportingTriggers struct {
 	MACAR bool
 	EVETH bool
 	EVEQU bool
+	TERMR bool
+	MONIT bool
 }
 
-func NewReportingTriggers(p, v, t, q, start, stopt, d, l, vol, tim, en, ma, eveth, evequ bool) *ReportingTriggers {
+func NewReportingTriggers(p, v, t, q, start, stopt, d, l, vol, tim, en, ma, eveth, evequ,ter, mon bool) *ReportingTriggers {
 	return &ReportingTriggers{
 		PERIO: p,
 		VOLTH: v,
@@ -33,6 +35,8 @@ func NewReportingTriggers(p, v, t, q, start, stopt, d, l, vol, tim, en, ma, evet
 		MACAR: ma,
 		EVETH: eveth,
 		EVEQU: evequ,
+		TERMR: ter,
+		MONIT: mon,
 	}
 }
 
@@ -80,6 +84,13 @@ func (r ReportingTriggers) Serialize() ([]byte, error) {
 	if r.EVEQU {
 		sByte |= 0x20
 	}
+	if r.TERMR {
+                sByte |= 0x40
+        }
+        if r.MONIT {
+                sByte |= 0x80
+        }
+
 	b := make([]byte, 2)
 	b[0] = fByte
 	b[1] = sByte
