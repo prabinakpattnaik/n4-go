@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"bitbucket.org/sothy5/n4-go/ie"
+	"github.com/prabinakpattnaik/n4-go/ie"
 	"github.com/u-root/u-root/pkg/uio"
 )
 

@@ -3,7 +3,7 @@ package ie
 import (
 	"fmt"
 
-	"bitbucket.org/sothy5/n4-go/util/util_3gpp"
+	"github.com/prabinakpattnaik/n4-go/util/util_3gpp"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 

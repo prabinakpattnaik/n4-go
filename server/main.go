@@ -4,9 +4,9 @@ import (
 	"log"
 	"net"
 
-	"bitbucket.org/sothy5/n4-go/msg"
-	"bitbucket.org/sothy5/n4-go/server/internal/session"
-	"bitbucket.org/sothy5/n4-go/util/server"
+	"github.com/prabinakpattnaik/n4-go/msg"
+	"github.com/prabinakpattnaik/n4-go/server/internal/session"
+	"github.com/prabinakpattnaik/n4-go/util/server"
 )
 
 var (

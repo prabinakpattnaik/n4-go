@@ -6,10 +6,10 @@ import (
 
 	"encoding/binary"
 
-	"bitbucket.org/sothy5/n4-go/ie"
-	"bitbucket.org/sothy5/n4-go/ie/bar"
-	"bitbucket.org/sothy5/n4-go/ie/qer"
-	"bitbucket.org/sothy5/n4-go/msg"
+	"github.com/prabinakpattnaik/n4-go/ie"
+	"github.com/prabinakpattnaik/n4-go/ie/bar"
+	"github.com/prabinakpattnaik/n4-go/ie/qer"
+	"github.com/prabinakpattnaik/n4-go/msg"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 

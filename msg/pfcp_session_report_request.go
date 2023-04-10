@@ -3,9 +3,9 @@ package msg
 import (
 	"fmt"
 
-	"bitbucket.org/sothy5/n4-go/ie"
-	"bitbucket.org/sothy5/n4-go/ie/sr"
-	"bitbucket.org/sothy5/n4-go/util/se"
+	"github.com/prabinakpattnaik/n4-go/ie"
+	"github.com/prabinakpattnaik/n4-go/ie/sr"
+	"github.com/prabinakpattnaik/n4-go/util/se"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 

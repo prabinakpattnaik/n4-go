@@ -1,7 +1,7 @@
 package helper
 
 import (
-	"bitbucket.org/sothy5/n4-go/ie"
+	"github.com/prabinakpattnaik/n4-go/ie"
 )
 
 type upipresourceinformation_setting struct {
