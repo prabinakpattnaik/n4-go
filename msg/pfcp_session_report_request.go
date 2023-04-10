@@ -7,6 +7,7 @@ import (
 	"github.com/prabinakpattnaik/n4-go/ie/sr"
 	"github.com/prabinakpattnaik/n4-go/util/se"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
+	log "github.com/sirupsen/logrus"
 )
 
 //PFCPSessionReportRequest
@@ -68,6 +69,31 @@ func (sr PFCPSessionReportRequest) Type() PFCPType {
 
 func (sr PFCPSessionReportRequest) GetHeader() *PFCPHeader {
 	return sr.Header
+}
+func  ProcessPFCPUsageReport_seid(m *PFCPMessage, cpSEIDDPSEID *se.CPSEIDDPSEIDEntity) (sr.UsageReport, uint64, error) {
+	pfcpMessage, err := FromPFCPMessage(m)
+	var ba sr.UsageReport
+        if err != nil {
+                fmt.Printf("pfcpSessionER:Header %+v\n", pfcpMessage)
+		return ba, 0, err
+        }
+        //TODO bad length
+        pfcpSessionReportRequest, ok := pfcpMessage.(PFCPSessionReportRequest)
+	if !ok {
+                return ba, 0, fmt.Errorf("PFCP Session Report Request could not type asserted")
+        }
+	pfcpHeader := pfcpSessionReportRequest.GetHeader()
+        seid := cpSEIDDPSEID.Value(pfcpHeader.SessionEndpointIdentifier)
+	reportType := sr.NewReportTypeFromByte(pfcpSessionReportRequest.ReportType.Data.Serialize()[0])
+	if reportType.USAR {
+                err := ba.UsageReportFromByte( pfcpSessionReportRequest.UsageReport[0].Data.Serialize())
+                if err != nil {
+                        log.WithError(err).Error("Process error in PFCP Session Report Request")
+                }
+
+		return ba, seid, err
+	}
+	return ba, 0, err
 }
 func ProcessPFCPSessionReportRequest(m *PFCPMessage, cpSEIDDPSEID *se.CPSEIDDPSEIDEntity) ([]byte, error) {
 	pfcpMessage, err := FromPFCPMessage(m)
