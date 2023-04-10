@@ -1,30 +1,66 @@
 # Introduction
 
-N4-GO is Go implementation of N4 interface, used between control plane and data plane in the 5GCore architecture. The protocol is defined in 3GPP TS 29.244 v15.5.0.
+N4-GO is Go implementation of N4 interface, used between control plane and data plane in the 5GCore architecture. The protocol is defined in 3GPP TS 29.244 v15.5.8.
 N4 protocol has defined many Information Elements (IE) which will be included in protocol messages (i.e. Packet Forwarding Control Protocol (PFCP)) 
 
 # Done
 
 ## Information Element
 
-- RecoveryTimestamp (96)
-- NodeID (IPv4)
-- UPFunctionFeatures
-- CPFunctionFeatures
-- UserPlaneIPResourceInformation
-- Cause
-- F-SEID
-- UE IPAddress (IPv4)
-- Create PDR
-- Create FAR
-- Forwarding Parameters
-- Outer Header Creation
-- Create URR
-- Create QER
-- Create BAR
-- Apply Action
-
-
+- Cause 
+- Source Interface 
+- F-TEID 
+- Network Instance 
+- SDF Filter 
+- Gate Status 
+- MBR 
+- GBR 
+- Precedence 
+- Volume Threshold 
+- Time Threshold 
+- Monitoring Time 
+- Inactivity Detection Time 
+- Reporting Triggers 
+- Report Type 
+- Offending IE 
+- Destination Interface 
+- Apply Action 
+- Sequence Number 
+- Packet Detection Rule ID (PDR ID)
+- F-SEID 
+- Node ID 
+- PFD Contents 
+- Measurement Method 
+- Usage Report  Trigger
+- Measurement Period 
+- Volume Measurement 
+- Duration Measurement 
+- Time of First Packet 
+- Time of Last Packet 
+- Dropped DL Traffic Threshold
+- Volume Quota 
+- Time Quota 
+- Start Time 
+- End Time 
+- URR ID 
+- Outer Header Creation 
+- BAR ID 
+- Usage Information 
+- Flow Information 
+- UE IP Address 
+- Outer Header Removal 
+- Recovery Time Stamp 
+- Measurement Information 
+- Node Report Type 
+- UR-SEQN 
+- FAR ID 
+- QER ID 
+- OCI Flags 
+- PFCP Association Release Request
+- PDN Type 
+- User Plane IP Resource Information
+- User Plane Inactivity Timer 
+- QFI 
 
 ## PFCP Messages
 PFCP message header is created and tested.
@@ -33,9 +69,9 @@ PFCP message header is created and tested.
 - Heartbeat-Response
 - Association-Setup-Request
 - Association-Setup-Response
-- Session-Establishment-Request: which includes Create PDR, Create FAR (forwarding Action), Create URR(Time Threshold),and CreateQER.
+- Session-Establishment-Request
 - Session-Establishment-Response
-- Session-Modification-Request: which includes Create PDR, Create FAR(buffering action), Create BAR
+- Session-Modification-Request
 - Session-Modification-Response
 - Session-Deletion-Request
 - Session-Deleteion-Respone
@@ -77,29 +113,13 @@ N4 supports many features. Initial PoC considers only PFCP association setup and
 - handling of ARP and IPv6 Neighbour Solicitation Response
 
 
-# Test
-N4-GO library can be tested as follows:
-Compile server.go and client .go files in corresponding folder. 
+# Compile
 
-```
-go build server.go
-```
+make install [Compile and build the go packages]
+make [Compile, run the UT, build the go packages]
+make test [Run the unit test]
+make cover [Show the coverity report of UT]
 
-```
-go build client.go
-```
-
-Run the code
-
-```
-sudo ./server
-``` 
-
-```
-sudo /client --localIP="127.0.0.1" --remoteIP="127.0.0.1" --clientInit=true
-```
-
-When running client, you will see log of PFCP session establishment/modification/deletion request and response. 
 
 
 
