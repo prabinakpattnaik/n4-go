@@ -6,20 +6,20 @@ import (
 	"os"
 	"time"
 
-	//"bitbucket.org/sothy5/n4-go/ie/qer"
-	//"bitbucket.org/sothy5/n4-go/ie/urr"
-	"bitbucket.org/sothy5/n4-go/msg"
+	//"github.com/prabinakpattnaik/n4-go/ie/qer"
+	//"github.com/prabinakpattnaik/n4-go/ie/urr"
+	"github.com/prabinakpattnaik/n4-go/msg"
 
-	"bitbucket.org/sothy5/n4-go/util/se"
+	"github.com/prabinakpattnaik/n4-go/util/se"
 
-        setting "bitbucket.org/sothy5/n4-go/client/internal/helper"
-	"bitbucket.org/sothy5/n4-go/client/internal/server_wrap"
-	"bitbucket.org/sothy5/n4-go/client/internal/session"
+        setting "github.com/prabinakpattnaik/n4-go/client/internal/helper"
+	"github.com/prabinakpattnaik/n4-go/client/internal/server_wrap"
+	"github.com/prabinakpattnaik/n4-go/client/internal/session"
 
-	//"bitbucket.org/sothy5/n4-go/client/internal/usage_report"
+	//"github.com/prabinakpattnaik/n4-go/client/internal/usage_report"
 
-	//"bitbucket.org/sothy5/n4-go/client/internal/usage_report"
-	"bitbucket.org/sothy5/n4-go/ie"
+	//"github.com/prabinakpattnaik/n4-go/client/internal/usage_report"
+	"github.com/prabinakpattnaik/n4-go/ie"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"

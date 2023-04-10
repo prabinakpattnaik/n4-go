@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"bitbucket.org/sothy5/n4-go/ie"
+	"github.com/prabinakpattnaik/n4-go/ie"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 
@@ -55,7 +55,7 @@ func (sr PFCPSessionEstablishmentRequest) Serialize() ([]byte, error) {
 		return b, nil
 	}
 
-	dataLength := sr.Len()
+	//dataLength := sr.Len()
 	pfcpend := uint16(PFCPBasicHeaderLength) + PFCPMessageSize
 	output := make([]byte, pfcpend)
 	copy(output[:pfcpend], sr.Header.Serialize())

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"bitbucket.org/sothy5/n4-go/msg"
+	"github.com/prabinakpattnaik/n4-go/msg"
 )
 
 // Handler is a type that defines the handler function to be called every time a

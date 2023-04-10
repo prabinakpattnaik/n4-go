@@ -1,4 +1,4 @@
-module bitbucket.org/sothy5/n4-go
+module github.com/prabinakpattnaik/n4-go
 
 go 1.12
 

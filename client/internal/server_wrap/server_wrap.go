@@ -6,10 +6,10 @@ import (
 	"net"
 	"time"
 
-	"bitbucket.org/sothy5/n4-go/ie"
-	"bitbucket.org/sothy5/n4-go/msg"
-	"bitbucket.org/sothy5/n4-go/util/se"
-	"bitbucket.org/sothy5/n4-go/util/server"
+	"github.com/prabinakpattnaik/n4-go/ie"
+	"github.com/prabinakpattnaik/n4-go/msg"
+	"github.com/prabinakpattnaik/n4-go/util/se"
+	"github.com/prabinakpattnaik/n4-go/util/server"
 	dt "github.com/fiorix/go-diameter/diam/datatype"
 )
 

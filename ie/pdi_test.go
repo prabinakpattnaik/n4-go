@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	"bitbucket.org/sothy5/n4-go/util/util_3gpp"
+	"github.com/prabinakpattnaik/n4-go/util/util_3gpp"
 )
 
 /*
